@@ -1,0 +1,25 @@
+{
+  "stockData": {
+    "symbol": "RELIANCE",
+    "price": 1382.6,
+    "change": 2.2,
+    "changePercent": 0.16,
+    "volume": 7454588,
+    "high": 1391.8,
+    "low": 1377.5,
+    "open": 1382.6,
+    "prevClose": 1380.4,
+    "currency": "INR",
+    "source": "yahoo_finance",
+    "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/RELIANCE.NS",
+    "timestamp": "2025-08-13T16:27:50.651Z",
+    "isRealData": true,
+    "fetchedAt": "2025-08-13T16:27:50.651Z"
+  },
+  "fetchInfo": {
+    "source": "yahoo_finance",
+    "isRealData": true,
+    "fetchedAt": "2025-08-13T16:27:50.651Z",
+    "reliability": "Real market data"
+  }
+}
