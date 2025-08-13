@@ -1,0 +1,32 @@
+{
+  "name": "trade-book",
+  "version": "1.0.0",
+  "description": "A utility for scraping equity data and managing trade information",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test src/**/*.test.js"
+  },
+  "keywords": [
+    "equity",
+    "trading",
+    "scraping",
+    "finance",
+    "stocks"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "cheerio": "^1.1.2",
+    "dotenv": "^16.3.1",
+    "express": "^5.1.0",
+    "node-cron": "^3.0.3",
+    "puppeteer": "^21.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
