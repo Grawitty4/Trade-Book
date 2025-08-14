@@ -1,0 +1,11 @@
+[variables]
+NODE_ENV = "production"
+
+[phases.install]
+cmds = ["npm ci --omit=dev --no-audit --no-fund"]
+
+[phases.build]
+cmds = ["echo 'No build step required'"]
+
+[start]
+cmd = "npm start"
