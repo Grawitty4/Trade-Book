@@ -1,25 +1,24 @@
 {
   "stockData": {
     "symbol": "RELIANCE",
-    "price": 1382.6,
-    "change": 2.2,
-    "changePercent": 0.16,
-    "volume": 7454588,
-    "high": 1391.8,
-    "low": 1377.5,
-    "open": 1382.6,
-    "prevClose": 1380.4,
+    "price": 2907.040778475944,
+    "change": 69.4197095506627,
+    "changePercent": 2.387985406488069,
+    "volume": 383447,
+    "high": 2997.871441276258,
+    "low": 2787.0498786966677,
+    "open": 2899.079315108317,
+    "prevClose": 2837.621068925281,
     "currency": "INR",
-    "source": "yahoo_finance",
-    "sourceUrl": "https://query1.finance.yahoo.com/v8/finance/chart/RELIANCE.NS",
-    "timestamp": "2025-08-13T16:27:50.651Z",
-    "isRealData": true,
-    "fetchedAt": "2025-08-13T16:27:50.651Z"
+    "source": "MOCK_DATA",
+    "sourceUrl": "NO_REAL_SOURCE",
+    "timestamp": "2025-08-13T16:29:43.970Z",
+    "isRealData": false,
+    "warning": "⚠️ THIS IS MOCK DATA - REAL SOURCES FAILED"
   },
   "fetchInfo": {
-    "source": "yahoo_finance",
-    "isRealData": true,
-    "fetchedAt": "2025-08-13T16:27:50.651Z",
-    "reliability": "Real market data"
+    "source": "MOCK_DATA",
+    "isRealData": false,
+    "reliability": "Mock data (real sources failed)"
   }
 }
