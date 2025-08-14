@@ -121,27 +121,12 @@ class UniversalStockScraper {
   }
 
   /**
-   * MoneyControl scraper
+   * MoneyControl scraper (simplified - no HTML parsing)
    */
   async fetchFromMoneyControl(symbol) {
-    // MoneyControl search and scrape approach
-    const searchUrl = `https://www.moneycontrol.com/stocks/marketstats/nse/homepagedata/homepagedata.php?cat=A&type=1&format=json`;
-    
-    console.log(`   📡 MoneyControl search...`);
-    
-    // First, search for the stock
-    const searchResponse = await axios.get(searchUrl, {
-      headers: {
-        'User-Agent': this.userAgent,
-        'Referer': 'https://www.moneycontrol.com/',
-        'Accept': 'application/json'
-      },
-      timeout: this.timeout
-    });
-
-    // This is a simplified approach - in reality, you'd need to parse the response
-    // and find the stock URL, then scrape the individual stock page
-    throw new Error('MoneyControl integration requires HTML parsing - will implement if Yahoo Finance fails');
+    // MoneyControl would require complex HTML parsing with cheerio
+    // For now, we'll skip this and rely on Yahoo Finance and NSE
+    throw new Error('MoneyControl integration requires HTML parsing - skipping for faster deployment');
   }
 
   /**
