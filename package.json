@@ -8,6 +8,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "build": "echo 'No build step required'",
+    "build:netlify": "cp -r public/* . && echo 'Netlify build completed'",
     "test": "echo 'No tests specified'"
   },
   "keywords": [
