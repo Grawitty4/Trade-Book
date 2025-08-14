@@ -1,6 +1,15 @@
 # Trade Book 📊💼
 
-A comprehensive utility for scraping equity data and managing trade portfolios for Indian stocks.
+A comprehensive user-based trade book with authentication, stock scraping, and portfolio management for Indian stocks.
+
+## 🌐 Live Demo
+
+**🚀 Live App:** [Trade Book on Railway](https://your-app-name.railway.app)
+- ✅ User authentication & registration
+- ✅ Real-time stock data scraping  
+- ✅ Portfolio management & P&L tracking
+- ✅ Social features (friends & sharing)
+- ✅ PostgreSQL database with full schema
 
 ## Features ✨
 
