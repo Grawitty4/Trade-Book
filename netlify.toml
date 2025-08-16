@@ -1,13 +1,7 @@
 [build]
-  # Netlify build configuration for Trade Book frontend
+  # Static build - no dependencies needed
   publish = "."
-  command = "cp public/index.html . && echo 'Build completed'"
-
-[build.environment]
-  # Node.js version for build
-  NODE_VERSION = "18"
-  # Prevent network calls during build
-  NODE_ENV = "build"
+  command = "cp public/index.html . && cp _redirects . && echo 'Static build completed'"
 
 [[redirects]]
   # Handle client-side routing
