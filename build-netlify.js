@@ -18,6 +18,20 @@ async function buildForNetlify() {
     await fs.copyFile('public/index.html', 'index.html');
     console.log('✅ Copied index.html to root');
     
+    // Add build-time safety check to prevent network calls during build
+    let htmlContent = await fs.readFile('index.html', 'utf8');
+    htmlContent = htmlContent.replace(
+      'document.addEventListener(\'DOMContentLoaded\', function() {',
+      `document.addEventListener('DOMContentLoaded', function() {
+            // Prevent network calls during Netlify build
+            if (typeof process !== 'undefined' && process.env.NODE_ENV === 'build') {
+                console.log('Build environment detected, skipping network calls');
+                return;
+            }`
+    );
+    await fs.writeFile('index.html', htmlContent);
+    console.log('✅ Added build-time safety checks');
+    
     // Create a simple manifest
     const manifest = {
       name: "Trade Book",

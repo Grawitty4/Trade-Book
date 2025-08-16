@@ -326,8 +326,11 @@
 
         // Initialize the app
         document.addEventListener('DOMContentLoaded', function() {
-            checkAuthStatus();
-            loadTrades();
+            // Only check auth status if we're in a browser environment (not during build)
+            if (typeof window !== 'undefined' && window.location) {
+                checkAuthStatus();
+                loadTrades();
+            }
         });
 
         // Authentication functions

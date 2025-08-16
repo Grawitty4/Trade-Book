@@ -1,11 +1,13 @@
 [build]
   # Netlify build configuration for Trade Book frontend
   publish = "."
-  command = "node build-netlify.js"
+  command = "cp public/index.html . && echo 'Build completed'"
 
 [build.environment]
   # Node.js version for build
   NODE_VERSION = "18"
+  # Prevent network calls during build
+  NODE_ENV = "build"
 
 [[redirects]]
   # Handle client-side routing
