@@ -46,6 +46,16 @@ app.use(express.static(__dirname));
 // Authentication routes
 app.use('/api/auth', authRoutes);
 
+// Health check for Railway (must be before authentication)
+app.get('/railway-health', (req, res) => {
+    res.status(200).json({ 
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: 'trade-book',
+        version: '1.0.0'
+    });
+});
+
 // Authentication check for main app
 app.get('/', optionalAuth, (req, res) => {
     if (!req.user) {
