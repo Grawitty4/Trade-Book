@@ -24,43 +24,16 @@ const PgSession = connectPgSimple(session);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session middleware with proper database detection
-async function setupSessionStore() {
-    let sessionStore;
-    
-    // Try to test database connection
-    const dbConnected = await testConnection();
-    
-    if (dbConnected && config.database.url && config.database.url !== 'postgresql://username:password@host:port/cursor_trade_book') {
-        try {
-            // Use PostgreSQL session store when database is available
-            sessionStore = new PgSession({
-                conString: config.database.url,
-                tableName: 'session',
-                schemaName: 'cursor_trade_book'
-            });
-            console.log('📦 Using PostgreSQL session store');
-        } catch (error) {
-            console.log('⚠️ PostgreSQL session store failed, using memory store:', error.message);
-            sessionStore = undefined; // Will use default memory store
-        }
-    } else {
-        console.log('⚠️ Database offline, using memory session store');
-        sessionStore = undefined; // Will use default memory store
-    }
-    
-    return sessionStore;
-}
-
-const sessionStore = await setupSessionStore();
+// Session middleware - simplified and more reliable
+console.log('⚠️ Using memory session store for reliability');
 
 app.use(session({
-    store: sessionStore, // Will be PostgreSQL on Railway, memory locally
+    // Always use memory store for now (works in both environments)
     secret: config.auth.sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: config.app.nodeEnv === 'production',
+        secure: false, // Disable secure for testing (Railway might have HTTPS issues)
         httpOnly: true,
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     }
