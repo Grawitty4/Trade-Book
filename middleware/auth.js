@@ -62,6 +62,7 @@ export const authenticateToken = async (req, res, next) => {
 // Optional authentication (doesn't fail if no token)
 export const optionalAuth = async (req, res, next) => {
   try {
+    // First check for JWT token in Authorization header (for API calls)
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
@@ -69,11 +70,23 @@ export const optionalAuth = async (req, res, next) => {
       const decoded = verifyToken(token);
       const user = await userQueries.findUserById(decoded.id);
       req.user = user;
+      return next();
     }
     
+    // Then check for session-based auth (for browser navigation)
+    if (req.session && req.session.userId) {
+      const user = await userQueries.findUserById(req.session.userId);
+      if (user) {
+        req.user = user;
+        return next();
+      }
+    }
+    
+    // No authentication found, continue without user
     next();
   } catch (error) {
-    // Continue without authentication
+    // Continue without authentication on any error
+    console.log('Auth check failed:', error.message);
     next();
   }
 };

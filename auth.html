@@ -618,6 +618,7 @@
             const token = localStorage.getItem('token');
             if (token) {
                 // Verify token is still valid
+                console.log('Checking existing token...');
                 fetch('/api/auth/check', {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -625,18 +626,30 @@
                 })
                 .then(response => response.json())
                 .then(result => {
-                    if (result.success) {
+                    console.log('Token check result:', result);
+                    if (result.success && result.authenticated) {
+                        console.log('Valid token found, redirecting to main app...');
                         window.location.href = '/';
                     } else {
+                        console.log('Invalid token, clearing localStorage...');
                         localStorage.removeItem('token');
                         localStorage.removeItem('user');
+                        // Show appropriate error message if database is offline
+                        if (result.type === 'database_offline') {
+                            showAlert('login', 'Database is currently offline. Please try again later.', 'warning');
+                        }
                     }
                 })
-                .catch(() => {
+                .catch((error) => {
+                    console.log('Token check failed:', error);
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
+                    showAlert('login', 'Unable to verify authentication. Please login again.', 'warning');
                 });
             }
+            
+            // Clear any existing alerts on page load
+            clearAlerts();
         });
     </script>
 </body>
