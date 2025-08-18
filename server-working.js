@@ -31,20 +31,59 @@ let pool = null;
 
 async function initDatabase() {
     try {
-        // Try to import database connection
-        const dbModule = await import('./database/db.js');
-        const { testConnection } = dbModule;
-        await testConnection();
-        
-        // If we get here, database is working
         const { Pool } = await import('pg');
+        
+        // Use Railway database URL or fallback to local
+        const connectionString = process.env.DATABASE_URL || 
+            'postgresql://postgres:password@containers-us-west-1.railway.app:5432/railway';
+        
         pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+            connectionString: connectionString,
+            ssl: connectionString.includes('railway.app') ? { rejectUnauthorized: false } : false,
+            max: 10,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 10000,
         });
         
-        dbAvailable = true;
+        // Test the connection
+        const client = await pool.connect();
         console.log('✅ Database connected successfully');
+        
+        // Make sure our schema and tables exist
+        await client.query(`
+            CREATE SCHEMA IF NOT EXISTS cursor_trade_book;
+        `);
+        
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS cursor_trade_book.users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                full_name VARCHAR(255),
+                is_public BOOLEAN DEFAULT false,
+                profile_picture TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP
+            );
+        `);
+        
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS cursor_trade_book.trades (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES cursor_trade_book.users(id) ON DELETE CASCADE,
+                symbol VARCHAR(50) NOT NULL,
+                type VARCHAR(10) NOT NULL CHECK (type IN ('buy', 'sell')),
+                quantity INTEGER NOT NULL CHECK (quantity > 0),
+                price DECIMAL(10,2) NOT NULL CHECK (price > 0),
+                date DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        
+        client.release();
+        dbAvailable = true;
+        console.log('✅ Database schema initialized');
     } catch (error) {
         console.log('⚠️ Database not available, using memory storage:', error.message);
         dbAvailable = false;
@@ -76,13 +115,13 @@ app.get('/railway-health', (req, res) => {
     });
 });
 
-// Simple auth endpoints
-app.post('/api/auth/simple-login', async (req, res) => {
+// Login endpoint - requires password
+app.post('/api/auth/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { identifier, password } = req.body;
         
-        if (!username) {
-            return res.status(400).json({ error: 'Username required' });
+        if (!identifier || !password) {
+            return res.status(400).json({ error: 'Username/email and password are required' });
         }
 
         let user = null;
@@ -91,19 +130,17 @@ app.post('/api/auth/simple-login', async (req, res) => {
             // Try database first
             try {
                 const result = await pool.query(
-                    'SELECT id, username, email, full_name, is_public, password_hash FROM cursor_trade_book.users WHERE username = $1',
-                    [username]
+                    'SELECT id, username, email, full_name, is_public, password_hash FROM cursor_trade_book.users WHERE username = $1 OR email = $1',
+                    [identifier]
                 );
                 
                 if (result.rows.length > 0) {
                     const dbUser = result.rows[0];
                     
-                    // If password provided, verify it
-                    if (password) {
-                        const validPassword = await bcrypt.compare(password, dbUser.password_hash);
-                        if (!validPassword) {
-                            return res.status(401).json({ error: 'Invalid credentials' });
-                        }
+                    // Verify password (required)
+                    const validPassword = await bcrypt.compare(password, dbUser.password_hash);
+                    if (!validPassword) {
+                        return res.status(401).json({ error: 'Invalid credentials' });
                     }
                     
                     user = {
@@ -113,14 +150,8 @@ app.post('/api/auth/simple-login', async (req, res) => {
                         full_name: dbUser.full_name,
                         is_public: dbUser.is_public
                     };
-                } else if (password) {
-                    // User doesn't exist, create new one if password provided
-                    const hashedPassword = await bcrypt.hash(password, 10);
-                    const insertResult = await pool.query(
-                        'INSERT INTO cursor_trade_book.users (username, email, password_hash, full_name, is_public) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, email, full_name, is_public',
-                        [username, `${username}@tradebook.com`, hashedPassword, username, false]
-                    );
-                    user = insertResult.rows[0];
+                } else {
+                    return res.status(401).json({ error: 'Invalid credentials' });
                 }
             } catch (dbError) {
                 console.log('Database error during auth, falling back to memory:', dbError.message);
@@ -129,26 +160,22 @@ app.post('/api/auth/simple-login', async (req, res) => {
         }
 
         if (!user) {
-            // Use memory storage
+            // Check memory storage
             for (const [id, userData] of users) {
-                if (userData.username === username) {
-                    user = { id, ...userData };
-                    break;
+                if (userData.username === identifier || userData.email === identifier) {
+                    // Verify password for memory users too
+                    if (userData.password_hash) {
+                        const validPassword = await bcrypt.compare(password, userData.password_hash);
+                        if (validPassword) {
+                            user = { id, ...userData };
+                            break;
+                        }
+                    }
                 }
             }
 
             if (!user) {
-                // Create new user in memory
-                const userId = currentUserId++;
-                const userData = {
-                    username,
-                    email: `${username}@tradebook.com`,
-                    full_name: username,
-                    is_public: false,
-                    created_at: new Date().toISOString()
-                };
-                users.set(userId, userData);
-                user = { id: userId, ...userData };
+                return res.status(401).json({ error: 'Invalid credentials' });
             }
         }
 
@@ -208,17 +235,21 @@ app.post('/api/auth/register', async (req, res) => {
                 }
             }
 
-            // Create in memory
+            // Create in memory with hashed password
             const userId = currentUserId++;
+            const hashedPassword = await bcrypt.hash(password, 10);
             const userData = {
                 username,
                 email: email || `${username}@tradebook.com`,
+                password_hash: hashedPassword,
                 full_name: fullName || username,
                 is_public: false,
                 created_at: new Date().toISOString()
             };
             users.set(userId, userData);
             user = { id: userId, ...userData };
+            // Remove password_hash from response
+            delete user.password_hash;
         }
 
         currentUser = user;
