@@ -319,8 +319,10 @@
     </div>
 
     <script>
-        // Configuration
-        const RAILWAY_BACKEND_URL = 'http://localhost:3000';  // Local development server
+        // Configuration - Auto-detect environment
+        const RAILWAY_BACKEND_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000'  // Local development
+            : window.location.origin;  // Railway deployment (use same origin)
         let currentUser = null;
         let trades = [];
 
