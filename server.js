@@ -157,6 +157,39 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// Database status endpoint for debugging
+app.get('/api/debug/db-status', async (req, res) => {
+    try {
+        const dbStatus = await testConnection();
+        res.json({
+            database: {
+                connected: dbStatus,
+                url: config.database.url ? '***set***' : 'not set',
+                host: config.database.host,
+                port: config.database.port,
+                database: config.database.database
+            },
+            environment: {
+                NODE_ENV: process.env.NODE_ENV,
+                PORT: process.env.PORT,
+                DATABASE_URL: process.env.DATABASE_URL ? '***set***' : 'not set'
+            }
+        });
+    } catch (error) {
+        res.json({
+            database: {
+                connected: false,
+                error: error.message
+            },
+            environment: {
+                NODE_ENV: process.env.NODE_ENV,
+                PORT: process.env.PORT,
+                DATABASE_URL: process.env.DATABASE_URL ? '***set***' : 'not set'
+            }
+        });
+    }
+});
+
 // Initialize database and start server
 async function startServer() {
     console.log('🚀 Starting Trade Book Server...');

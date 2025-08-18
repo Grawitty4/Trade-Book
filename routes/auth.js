@@ -30,6 +30,15 @@ router.post('/register', async (req, res) => {
     
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Check if it's a database connection error
+    if (error.message.includes('connection') || error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
+      return res.status(503).json({ 
+        error: 'Database is currently offline. Please try again later or contact support.',
+        type: 'database_offline'
+      });
+    }
+    
     res.status(400).json({ 
       error: error.message || 'Registration failed' 
     });
@@ -61,6 +70,15 @@ router.post('/login', async (req, res) => {
     
   } catch (error) {
     console.error('Login error:', error);
+    
+    // Check if it's a database connection error
+    if (error.message.includes('connection') || error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
+      return res.status(503).json({ 
+        error: 'Database is currently offline. Please try again later or contact support.',
+        type: 'database_offline'
+      });
+    }
+    
     res.status(401).json({ 
       error: error.message || 'Login failed' 
     });
@@ -302,18 +320,75 @@ router.get('/shared-portfolios', authenticateToken, async (req, res) => {
 });
 
 // Check authentication status
-router.get('/check', authenticateToken, (req, res) => {
-  res.json({
-    success: true,
-    authenticated: true,
-    user: {
-      id: req.user.id,
-      username: req.user.username,
-      email: req.user.email,
-      full_name: req.user.full_name,
-      is_public: req.user.is_public
+router.get('/check', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.json({
+        success: false,
+        authenticated: false,
+        error: 'No token provided'
+      });
     }
-  });
+
+    // Try to authenticate with database
+    try {
+      const { verifyToken } = await import('../middleware/auth.js');
+      const decoded = verifyToken(token);
+      const user = await userQueries.findUserById(decoded.id);
+      
+      if (!user) {
+        return res.json({
+          success: false,
+          authenticated: false,
+          error: 'User not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        authenticated: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          full_name: user.full_name,
+          is_public: user.is_public
+        }
+      });
+    } catch (dbError) {
+      // If database is offline, at least verify the token is valid
+      if (dbError.message.includes('connection') || dbError.message.includes('timeout')) {
+        try {
+          const { verifyToken } = await import('../middleware/auth.js');
+          const decoded = verifyToken(token);
+          res.json({
+            success: false,
+            authenticated: false,
+            error: 'Database offline - please try again later',
+            type: 'database_offline'
+          });
+        } catch (tokenError) {
+          res.json({
+            success: false,
+            authenticated: false,
+            error: 'Invalid token'
+          });
+        }
+      } else {
+        throw dbError;
+      }
+    }
+  } catch (error) {
+    console.error('Auth check error:', error);
+    res.json({
+      success: false,
+      authenticated: false,
+      error: 'Authentication check failed'
+    });
+  }
 });
 
 export default router;
