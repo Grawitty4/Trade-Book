@@ -237,9 +237,23 @@
 
         <!-- Main Application -->
         <div id="mainApp" style="display: none;">
+            <!-- User Info Bar -->
+            <div class="user-info" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; color: white;">
+                <div>
+                    <h3 id="welcomeUser" style="margin: 0;">Welcome!</h3>
+                    <p id="userEmail" style="margin: 5px 0 0 0; opacity: 0.8; font-size: 0.9rem;"></p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="showFriendsModal()" class="btn" style="background: #4CAF50; font-size: 0.9rem;">👥 Friends</button>
+                    <button onclick="toggleProfileVisibility()" class="btn" id="visibilityBtn" style="font-size: 0.9rem;">🔒 Private</button>
+                    <button onclick="logout()" class="btn" style="background: #f44336; font-size: 0.9rem;">Logout</button>
+                </div>
+            </div>
+
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('stock-scraper')">📈 Stock Scraper</button>
                 <button class="tab" onclick="switchTab('trade-book')">💼 Trade Book</button>
+                <button class="tab" onclick="switchTab('friends')">👥 Friends</button>
             </div>
 
             <div class="content">
@@ -312,6 +326,36 @@
                     <h3>📈 Your Trades</h3>
                     <div id="tradesList">
                         <p style="color: #666; text-align: center; padding: 20px;">No trades added yet. Add your first trade above!</p>
+                    </div>
+                </div>
+
+                <!-- Friends Tab -->
+                <div id="friends" class="tab-content" style="display: none;">
+                    <h2>👥 Friends & Social</h2>
+                    
+                    <div class="form-section">
+                        <h3>Add Friend</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <input type="text" id="friendUsername" placeholder="Friend's username or email" required>
+                            </div>
+                            <button type="button" onclick="addFriend()" class="btn">Add Friend</button>
+                        </div>
+                        <div id="friendStatus"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Your Friends</h3>
+                        <div id="friendsList">
+                            <p style="color: #666; text-align: center; padding: 20px;">No friends added yet. Add your first friend above!</p>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Shared Portfolios</h3>
+                        <div id="sharedPortfolios">
+                            <p style="color: #666; text-align: center; padding: 20px;">No shared portfolios available.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -591,6 +635,180 @@
         function showStatus(message, type) {
             // You can implement a toast notification here
             console.log(`${type.toUpperCase()}: ${message}`);
+        }
+
+        // New Social Features Functions
+        function showMainApp() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            
+            if (currentUser && currentUser.user) {
+                document.getElementById('welcomeUser').textContent = `Welcome, ${currentUser.user.full_name || currentUser.user.username}!`;
+                document.getElementById('userEmail').textContent = currentUser.user.email;
+                updateVisibilityButton();
+                loadFriends();
+            }
+        }
+
+        function updateVisibilityButton() {
+            const btn = document.getElementById('visibilityBtn');
+            if (currentUser && currentUser.user) {
+                if (currentUser.user.is_public) {
+                    btn.textContent = '🌍 Public';
+                    btn.style.background = '#4CAF50';
+                } else {
+                    btn.textContent = '🔒 Private';
+                    btn.style.background = '#ff9800';
+                }
+            }
+        }
+
+        async function toggleProfileVisibility() {
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/auth/profile/visibility`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    currentUser.user.is_public = result.user.is_public;
+                    updateVisibilityButton();
+                    showStatus(result.message, 'success');
+                } else {
+                    showStatus('Failed to update visibility', 'error');
+                }
+            } catch (error) {
+                showStatus('Network error', 'error');
+            }
+        }
+
+        async function addFriend() {
+            const friendUsername = document.getElementById('friendUsername').value.trim();
+            if (!friendUsername) {
+                showFriendStatus('Please enter a username or email', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/friends/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ friendIdentifier: friendUsername })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showFriendStatus(result.message, 'success');
+                    document.getElementById('friendUsername').value = '';
+                    loadFriends();
+                } else {
+                    const error = await response.json();
+                    showFriendStatus(error.error, 'error');
+                }
+            } catch (error) {
+                showFriendStatus('Network error', 'error');
+            }
+        }
+
+        async function loadFriends() {
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/friends`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    displayFriends(result.friends || []);
+                    loadSharedPortfolios();
+                }
+            } catch (error) {
+                console.error('Failed to load friends:', error);
+            }
+        }
+
+        function displayFriends(friends) {
+            const friendsList = document.getElementById('friendsList');
+            
+            if (friends.length === 0) {
+                friendsList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No friends added yet. Add your first friend above!</p>';
+                return;
+            }
+
+            friendsList.innerHTML = friends.map(friend => `
+                <div class="portfolio-item">
+                    <div>
+                        <span class="symbol">${friend.username}</span>
+                        <small style="color: #666; margin-left: 10px;">${friend.email}</small>
+                    </div>
+                    <div>
+                        <span style="color: #28a745;">✓ Friend</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadSharedPortfolios() {
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/sharing/portfolios`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    displaySharedPortfolios(result.portfolios || []);
+                }
+            } catch (error) {
+                console.error('Failed to load shared portfolios:', error);
+            }
+        }
+
+        function displaySharedPortfolios(portfolios) {
+            const sharedPortfolios = document.getElementById('sharedPortfolios');
+            
+            if (portfolios.length === 0) {
+                sharedPortfolios.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No shared portfolios available.</p>';
+                return;
+            }
+
+            sharedPortfolios.innerHTML = portfolios.map(portfolio => `
+                <div class="portfolio-item">
+                    <div>
+                        <span class="symbol">${portfolio.owner_username}'s Portfolio</span>
+                        <small style="color: #666; margin-left: 10px;">Shared on ${new Date(portfolio.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <div>
+                        <button onclick="viewSharedPortfolio(${portfolio.owner_id})" class="btn" style="font-size: 0.8rem;">View</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showFriendStatus(message, type) {
+            const statusDiv = document.getElementById('friendStatus');
+            statusDiv.innerHTML = `<p style="color: ${type === 'success' ? '#28a745' : '#dc3545'}; margin: 10px 0;">${message}</p>`;
+            setTimeout(() => statusDiv.innerHTML = '', 3000);
+        }
+
+        function showFriendsModal() {
+            switchTab('friends');
+        }
+
+        function logout() {
+            fetch(`${RAILWAY_BACKEND_URL}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            }).finally(() => {
+                currentUser = null;
+                trades = [];
+                showAuthSection();
+            });
+        }
+
+        function showAuthSection() {
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('mainApp').style.display = 'none';
         }
     </script>
 </body>
