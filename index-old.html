@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Book - Portfolio Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 15px 15px 0 0;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+        }
+
+        .tab.active:hover {
+            background: white;
+        }
+
+        .content {
+            background: white;
+            border-radius: 0 0 15px 15px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .stock-result, .trade-result {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .status {
+            padding: 10px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .status.info {
+            background: #cce7ff;
+            color: #0066cc;
+            border: 1px solid #99d6ff;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .auth-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .auth-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .portfolio-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .portfolio-item .symbol {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .portfolio-item .pnl.positive {
+            color: #28a745;
+        }
+
+        .portfolio-item .pnl.negative {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Trade Book</h1>
+            <p>Portfolio Management & Stock Analysis</p>
+        </div>
+
+        <!-- Authentication Status -->
+        <div class="auth-section" id="authSection">
+            <h3>🔐 Authentication Required</h3>
+            <p>Please register or login to access your portfolio</p>
+            <button class="btn" onclick="showAuth()">Register / Login</button>
+        </div>
+
+        <!-- Main Application -->
+        <div id="mainApp" style="display: none;">
+            <!-- User Info Bar -->
+            <div class="user-info" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; color: white;">
+                <div>
+                    <h3 id="welcomeUser" style="margin: 0;">Welcome!</h3>
+                    <p id="userEmail" style="margin: 5px 0 0 0; opacity: 0.8; font-size: 0.9rem;"></p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="showFriendsModal()" class="btn" style="background: #4CAF50; font-size: 0.9rem;">👥 Friends</button>
+                    <button onclick="toggleProfileVisibility()" class="btn" id="visibilityBtn" style="font-size: 0.9rem;">🔒 Private</button>
+                    <button onclick="logout()" class="btn" style="background: #f44336; font-size: 0.9rem;">Logout</button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('stock-scraper')">📈 Stock Scraper</button>
+                <button class="tab" onclick="switchTab('trade-book')">💼 Trade Book</button>
+                <button class="tab" onclick="switchTab('friends')">👥 Friends</button>
+            </div>
+
+            <div class="content">
+                <!-- Stock Scraper Tab -->
+                <div id="stock-scraper" class="tab-content active">
+                    <h2>📈 Stock Data Scraper</h2>
+                    <p style="margin-bottom: 20px; color: #666;">Search for Indian stock data from multiple sources</p>
+                    
+                    <div class="form-group">
+                        <label for="stockSymbol">Stock Symbol</label>
+                        <input type="text" id="stockSymbol" placeholder="e.g., RELIANCE, TCS, JIOFIN" value="RELIANCE">
+                    </div>
+                    
+                    <button class="btn" onclick="searchStock()">🔍 Search Stock</button>
+                    
+                    <div id="stockResult" class="stock-result" style="display: none;">
+                        <!-- Stock data will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Trade Book Tab -->
+                <div id="trade-book" class="tab-content">
+                    <h2>💼 Trade Portfolio</h2>
+                    <p style="margin-bottom: 20px; color: #666;">Manage your trades and track P&L</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                        <div>
+                            <h3>➕ Add New Trade</h3>
+                            <div class="form-group">
+                                <label for="tradeSymbol">Symbol</label>
+                                <input type="text" id="tradeSymbol" placeholder="e.g., RELIANCE">
+                            </div>
+                            <div class="form-group">
+                                <label for="tradeType">Type</label>
+                                <select id="tradeType">
+                                    <option value="BUY">BUY</option>
+                                    <option value="SELL">SELL</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tradeQuantity">Quantity</label>
+                                <input type="number" id="tradeQuantity" placeholder="100">
+                            </div>
+                            <div class="form-group">
+                                <label for="tradePrice">Price (₹)</label>
+                                <input type="number" id="tradePrice" step="0.01" placeholder="2500.00">
+                            </div>
+                            <button class="btn" onclick="addTrade()">💰 Add Trade</button>
+                        </div>
+
+                        <div>
+                            <h3>📊 Portfolio Summary</h3>
+                            <div id="portfolioSummary">
+                                <div class="portfolio-item">
+                                    <span>Total Investment: </span>
+                                    <span id="totalInvestment">₹0</span>
+                                </div>
+                                <div class="portfolio-item">
+                                    <span>Current Value: </span>
+                                    <span id="currentValue">₹0</span>
+                                </div>
+                                <div class="portfolio-item">
+                                    <span>Total P&L: </span>
+                                    <span id="totalPnL" class="pnl">₹0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>📈 Your Trades</h3>
+                    <div id="tradesList">
+                        <p style="color: #666; text-align: center; padding: 20px;">No trades added yet. Add your first trade above!</p>
+                    </div>
+                </div>
+
+                <!-- Friends Tab -->
+                <div id="friends" class="tab-content" style="display: none;">
+                    <h2>👥 Friends & Social</h2>
+                    
+                    <div class="form-section">
+                        <h3>Add Friend</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <input type="text" id="friendUsername" placeholder="Friend's username or email" required>
+                            </div>
+                            <button type="button" onclick="addFriend()" class="btn">Add Friend</button>
+                        </div>
+                        <div id="friendStatus"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Your Friends</h3>
+                        <div id="friendsList">
+                            <p style="color: #666; text-align: center; padding: 20px;">No friends added yet. Add your first friend above!</p>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Shared Portfolios</h3>
+                        <div id="sharedPortfolios">
+                            <p style="color: #666; text-align: center; padding: 20px;">No shared portfolios available.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Auto-detect environment
+        const RAILWAY_BACKEND_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000'  // Local development
+            : window.location.origin;  // Railway deployment (use same origin)
+        let currentUser = null;
+        let trades = [];
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Only check auth status if we're in a browser environment (not during build)
+            if (typeof window !== 'undefined' && window.location) {
+                checkAuthStatus();
+                loadTrades();
+            }
+        });
+
+        // Authentication functions
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/auth/me`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    currentUser = user;
+                    showMainApp();
+                } else {
+                    showAuthSection();
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                showAuthSection();
+            }
+        }
+
+        function showAuth() {
+            window.open(`${RAILWAY_BACKEND_URL}/auth`, '_blank');
+        }
+
+        function showAuthSection() {
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+
+        function showMainApp() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+        }
+
+        // Tab switching
+        function switchTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabId).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Stock scraper functions
+        async function searchStock() {
+            const symbol = document.getElementById('stockSymbol').value.trim().toUpperCase();
+            const resultDiv = document.getElementById('stockResult');
+            
+            if (!symbol) {
+                showStatus('Please enter a stock symbol', 'error');
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"></div> Searching for ' + symbol + '...';
+
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/stock-data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ symbol: symbol }),
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayStockData(data);
+                } else {
+                    resultDiv.innerHTML = `<div class="status error">Error: ${data.error || 'Failed to fetch stock data'}</div>`;
+                }
+            } catch (error) {
+                console.error('Stock search failed:', error);
+                resultDiv.innerHTML = '<div class="status error">Network error. Please check your connection and try again.</div>';
+            }
+        }
+
+        function displayStockData(data) {
+            const resultDiv = document.getElementById('stockResult');
+            const change = data.change || 0;
+            const changeClass = change >= 0 ? 'positive' : 'negative';
+            const changeSymbol = change >= 0 ? '+' : '';
+
+            resultDiv.innerHTML = `
+                <h3>📊 ${data.symbol}</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div><strong>Price:</strong> ₹${data.price}</div>
+                    <div><strong>Change:</strong> <span class="pnl ${changeClass}">${changeSymbol}₹${change} (${data.changePercent || 0}%)</span></div>
+                    <div><strong>Volume:</strong> ${data.volume?.toLocaleString() || 'N/A'}</div>
+                    <div><strong>High:</strong> ₹${data.high || 'N/A'}</div>
+                    <div><strong>Low:</strong> ₹${data.low || 'N/A'}</div>
+                    <div><strong>Source:</strong> ${data.source || 'Unknown'}</div>
+                </div>
+                <div class="status success" style="margin-top: 15px;">
+                    Data fetched successfully from ${data.source || 'external source'}
+                </div>
+            `;
+        }
+
+        // Trade management functions
+        async function addTrade() {
+            const symbol = document.getElementById('tradeSymbol').value.trim().toUpperCase();
+            const type = document.getElementById('tradeType').value;
+            const quantity = parseInt(document.getElementById('tradeQuantity').value);
+            const price = parseFloat(document.getElementById('tradePrice').value);
+
+            if (!symbol || !quantity || !price) {
+                showStatus('Please fill all trade fields', 'error');
+                return;
+            }
+
+            const trade = {
+                symbol: symbol,
+                type: type,
+                quantity: quantity,
+                price: price,
+                date: new Date().toISOString().split('T')[0]
+            };
+
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/trades`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(trade),
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const newTrade = await response.json();
+                    trades.push(newTrade);
+                    displayTrades();
+                    updatePortfolioSummary();
+                    clearTradeForm();
+                    showStatus('Trade added successfully!', 'success');
+                } else {
+                    const error = await response.json();
+                    showStatus(`Error: ${error.error || 'Failed to add trade'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Add trade failed:', error);
+                showStatus('Network error. Please try again.', 'error');
+            }
+        }
+
+        async function loadTrades() {
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/trades`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('📊 Trades response:', result);
+                    
+                    // Handle new API response format
+                    if (result.trades) {
+                        trades = result.trades; // Extract trades array from response
+                    } else if (Array.isArray(result)) {
+                        trades = result; // Handle old format if still used
+                    } else {
+                        trades = []; // Fallback to empty array
+                    }
+                    
+                    console.log('📈 Loaded trades:', trades.length);
+                    displayTrades();
+                    updatePortfolioSummary();
+                } else {
+                    console.log('❌ Failed to load trades:', response.status);
+                    trades = []; // Set empty array on error
+                    displayTrades();
+                }
+            } catch (error) {
+                console.error('Load trades failed:', error);
+                trades = []; // Set empty array on error
+                displayTrades();
+            }
+        }
+
+        function displayTrades() {
+            const tradesList = document.getElementById('tradesList');
+            
+            // Ensure trades is always an array
+            if (!Array.isArray(trades)) {
+                console.log('⚠️ Trades is not an array:', typeof trades, trades);
+                trades = [];
+            }
+            
+            if (trades.length === 0) {
+                tradesList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No trades added yet. Add your first trade above!</p>';
+                return;
+            }
+
+            tradesList.innerHTML = trades.map(trade => {
+                // Handle undefined values safely
+                const symbol = trade.symbol || 'N/A';
+                const date = trade.date || 'N/A';
+                const type = (trade.type || 'buy').toUpperCase();
+                const quantity = trade.quantity || 0;
+                const price = trade.price || 0;
+                const total = quantity * price;
+                
+                return `
+                <div class="portfolio-item">
+                    <div>
+                        <span class="symbol">${symbol}</span>
+                        <small style="color: #666; margin-left: 10px;">${date}</small>
+                    </div>
+                    <div>
+                        <span style="color: ${type === 'BUY' ? '#28a745' : '#dc3545'};">
+                            ${type} ${quantity} @ ₹${price}
+                        </span>
+                        <small style="color: #666; margin-left: 10px;">
+                            ₹${total.toLocaleString()}
+                        </small>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function updatePortfolioSummary() {
+            let totalInvestment = 0;
+            let currentValue = 0;
+            
+            trades.forEach(trade => {
+                const amount = trade.quantity * trade.price;
+                if (trade.type === 'BUY') {
+                    totalInvestment += amount;
+                } else {
+                    currentValue += amount;
+                }
+            });
+
+            const totalPnL = currentValue - totalInvestment;
+            
+            document.getElementById('totalInvestment').textContent = `₹${totalInvestment.toLocaleString()}`;
+            document.getElementById('currentValue').textContent = `₹${currentValue.toLocaleString()}`;
+            
+            const pnlElement = document.getElementById('totalPnL');
+            pnlElement.textContent = `₹${totalPnL.toLocaleString()}`;
+            pnlElement.className = `pnl ${totalPnL >= 0 ? 'positive' : 'negative'}`;
+        }
+
+        function clearTradeForm() {
+            document.getElementById('tradeSymbol').value = '';
+            document.getElementById('tradeQuantity').value = '';
+            document.getElementById('tradePrice').value = '';
+        }
+
+        function showStatus(message, type) {
+            // You can implement a toast notification here
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
+
+        // New Social Features Functions
+        function showMainApp() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            
+            if (currentUser && currentUser.user) {
+                document.getElementById('welcomeUser').textContent = `Welcome, ${currentUser.user.full_name || currentUser.user.username}!`;
+                document.getElementById('userEmail').textContent = currentUser.user.email;
+                updateVisibilityButton();
+                loadFriends();
+            }
+        }
+
+        function updateVisibilityButton() {
+            const btn = document.getElementById('visibilityBtn');
+            if (currentUser && currentUser.user) {
+                if (currentUser.user.is_public) {
+                    btn.textContent = '🌍 Public';
+                    btn.style.background = '#4CAF50';
+                } else {
+                    btn.textContent = '🔒 Private';
+                    btn.style.background = '#ff9800';
+                }
+            }
+        }
+
+        async function toggleProfileVisibility() {
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/auth/profile/visibility`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    currentUser.user.is_public = result.user.is_public;
+                    updateVisibilityButton();
+                    showStatus(result.message, 'success');
+                } else {
+                    showStatus('Failed to update visibility', 'error');
+                }
+            } catch (error) {
+                showStatus('Network error', 'error');
+            }
+        }
+
+        async function addFriend() {
+            const friendUsername = document.getElementById('friendUsername').value.trim();
+            if (!friendUsername) {
+                showFriendStatus('Please enter a username or email', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/friends/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ friendIdentifier: friendUsername })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showFriendStatus(result.message, 'success');
+                    document.getElementById('friendUsername').value = '';
+                    loadFriends();
+                } else {
+                    const error = await response.json();
+                    showFriendStatus(error.error, 'error');
+                }
+            } catch (error) {
+                showFriendStatus('Network error', 'error');
+            }
+        }
+
+        async function loadFriends() {
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/friends`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    displayFriends(result.friends || []);
+                    loadSharedPortfolios();
+                }
+            } catch (error) {
+                console.error('Failed to load friends:', error);
+            }
+        }
+
+        function displayFriends(friends) {
+            const friendsList = document.getElementById('friendsList');
+            
+            if (friends.length === 0) {
+                friendsList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No friends added yet. Add your first friend above!</p>';
+                return;
+            }
+
+            friendsList.innerHTML = friends.map(friend => `
+                <div class="portfolio-item">
+                    <div>
+                        <span class="symbol">${friend.username}</span>
+                        <small style="color: #666; margin-left: 10px;">${friend.email}</small>
+                    </div>
+                    <div>
+                        <span style="color: #28a745;">✓ Friend</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadSharedPortfolios() {
+            try {
+                const response = await fetch(`${RAILWAY_BACKEND_URL}/api/sharing/portfolios`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    displaySharedPortfolios(result.portfolios || []);
+                }
+            } catch (error) {
+                console.error('Failed to load shared portfolios:', error);
+            }
+        }
+
+        function displaySharedPortfolios(portfolios) {
+            const sharedPortfolios = document.getElementById('sharedPortfolios');
+            
+            if (portfolios.length === 0) {
+                sharedPortfolios.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No shared portfolios available.</p>';
+                return;
+            }
+
+            sharedPortfolios.innerHTML = portfolios.map(portfolio => `
+                <div class="portfolio-item">
+                    <div>
+                        <span class="symbol">${portfolio.owner_username}'s Portfolio</span>
+                        <small style="color: #666; margin-left: 10px;">Shared on ${new Date(portfolio.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <div>
+                        <button onclick="viewSharedPortfolio(${portfolio.owner_id})" class="btn" style="font-size: 0.8rem;">View</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showFriendStatus(message, type) {
+            const statusDiv = document.getElementById('friendStatus');
+            statusDiv.innerHTML = `<p style="color: ${type === 'success' ? '#28a745' : '#dc3545'}; margin: 10px 0;">${message}</p>`;
+            setTimeout(() => statusDiv.innerHTML = '', 3000);
+        }
+
+        function showFriendsModal() {
+            switchTab('friends');
+        }
+
+        function logout() {
+            // Clear everything first
+            currentUser = null;
+            trades = [];
+            
+            // Clear localStorage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // Call logout endpoint
+            fetch(`${RAILWAY_BACKEND_URL}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            }).catch(error => {
+                console.log('Logout API call failed:', error);
+            }).finally(() => {
+                // Force redirect to auth page
+                window.location.href = '/auth';
+            });
+        }
+
+        function showAuthSection() {
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
