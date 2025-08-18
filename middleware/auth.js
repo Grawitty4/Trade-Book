@@ -62,31 +62,52 @@ export const authenticateToken = async (req, res, next) => {
 // Optional authentication (doesn't fail if no token)
 export const optionalAuth = async (req, res, next) => {
   try {
+    console.log('🔍 OptionalAuth Check:', {
+      hasAuthHeader: !!req.headers['authorization'],
+      hasSession: !!req.session,
+      sessionId: req.sessionID,
+      sessionUserId: req.session?.userId,
+      path: req.path
+    });
+
     // First check for JWT token in Authorization header (for API calls)
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
     if (token) {
+      console.log('🔑 Checking JWT token...');
       const decoded = verifyToken(token);
       const user = await userQueries.findUserById(decoded.id);
-      req.user = user;
-      return next();
-    }
-    
-    // Then check for session-based auth (for browser navigation)
-    if (req.session && req.session.userId) {
-      const user = await userQueries.findUserById(req.session.userId);
       if (user) {
+        console.log('✅ JWT authentication successful for user:', user.username);
         req.user = user;
         return next();
       }
     }
     
+    // Then check for session-based auth (for browser navigation)
+    if (req.session && req.session.userId) {
+      console.log('👤 Checking session for userId:', req.session.userId);
+      try {
+        const user = await userQueries.findUserById(req.session.userId);
+        if (user) {
+          console.log('✅ Session authentication successful for user:', user.username);
+          req.user = user;
+          return next();
+        } else {
+          console.log('❌ User not found in database for session userId:', req.session.userId);
+        }
+      } catch (dbError) {
+        console.log('❌ Database error during session auth:', dbError.message);
+      }
+    }
+    
     // No authentication found, continue without user
+    console.log('🚫 No valid authentication found, continuing without user');
     next();
   } catch (error) {
     // Continue without authentication on any error
-    console.log('Auth check failed:', error.message);
+    console.log('❌ Auth check failed:', error.message);
     next();
   }
 };

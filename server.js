@@ -58,10 +58,19 @@ app.get('/railway-health', (req, res) => {
 
 // Authentication check for main app
 app.get('/', optionalAuth, (req, res) => {
+    console.log('📍 Main route accessed:', {
+        hasUser: !!req.user,
+        user: req.user ? { id: req.user.id, username: req.user.username } : null,
+        sessionId: req.sessionID,
+        sessionUserId: req.session?.userId
+    });
+    
     if (!req.user) {
-        // Redirect to login if not authenticated
+        console.log('🔄 No user found, redirecting to /auth');
         return res.redirect('/auth');
     }
+    
+    console.log('✅ User authenticated, serving main app');
     res.sendFile(join(__dirname, 'index.html'));
 });
 
