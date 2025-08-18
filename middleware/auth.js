@@ -99,6 +99,20 @@ export const optionalAuth = async (req, res, next) => {
         }
       } catch (dbError) {
         console.log('❌ Database error during session auth:', dbError.message);
+        
+        // If database is offline but we have a valid session, create a minimal user object
+        if (dbError.message.includes('connection') || dbError.message.includes('timeout') || dbError.message.includes('ECONNREFUSED')) {
+          console.log('🔄 Database offline - using session data for authentication');
+          req.user = {
+            id: req.session.userId,
+            username: req.session.username || 'user',
+            email: 'offline@mode.com',
+            full_name: req.session.username || 'Offline User',
+            is_public: false,
+            offline_mode: true
+          };
+          return next();
+        }
       }
     }
     

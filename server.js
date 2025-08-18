@@ -24,13 +24,23 @@ const PgSession = connectPgSimple(session);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session middleware
-app.use(session({
-    store: new PgSession({
+// Session middleware with fallback for offline database
+let sessionStore;
+try {
+    // Try to use PostgreSQL session store
+    sessionStore = new PgSession({
         conString: config.database.url,
         tableName: 'session',
         schemaName: 'cursor_trade_book'
-    }),
+    });
+    console.log('📦 Using PostgreSQL session store');
+} catch (error) {
+    console.log('⚠️ PostgreSQL session store failed, using memory store:', error.message);
+    sessionStore = undefined; // Will use default memory store
+}
+
+app.use(session({
+    store: sessionStore, // Will be undefined (memory store) if PostgreSQL fails
     secret: config.auth.sessionSecret,
     resave: false,
     saveUninitialized: false,
