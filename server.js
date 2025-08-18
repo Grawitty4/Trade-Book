@@ -190,6 +190,18 @@ app.get('/api/debug/db-status', async (req, res) => {
     }
 });
 
+// Simple test endpoint to verify server is working
+app.get('/api/test', (req, res) => {
+    res.json({
+        message: 'Server is working!',
+        timestamp: new Date().toISOString(),
+        session: req.session ? {
+            id: req.sessionID,
+            userId: req.session.userId || 'not set'
+        } : 'no session'
+    });
+});
+
 // Initialize database and start server
 async function startServer() {
     console.log('🚀 Starting Trade Book Server...');
