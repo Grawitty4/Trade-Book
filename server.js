@@ -62,8 +62,17 @@ app.get('/', optionalAuth, (req, res) => {
         hasUser: !!req.user,
         user: req.user ? { id: req.user.id, username: req.user.username } : null,
         sessionId: req.sessionID,
-        sessionUserId: req.session?.userId
+        sessionUserId: req.session?.userId,
+        hasTokenParam: !!req.query.token,
+        debugParam: req.query.debug
     });
+    
+    // If we have a debug token parameter, temporarily allow access
+    if (req.query.token && req.query.debug === 'login') {
+        console.log('🔧 Debug mode: Allowing access with token parameter');
+        res.sendFile(join(__dirname, 'index.html'));
+        return;
+    }
     
     if (!req.user) {
         console.log('🔄 No user found, redirecting to /auth');

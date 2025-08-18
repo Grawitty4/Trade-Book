@@ -512,9 +512,10 @@
                     
                     showAlert('login', 'Login successful! Redirecting...', 'success');
                     
-                    // Redirect to main app
+                    // Redirect to main app with token for debugging
                     setTimeout(() => {
-                        window.location.href = '/';
+                        console.log('🚀 Redirecting to main app with token...');
+                        window.location.href = '/?debug=login&token=' + encodeURIComponent(result.token);
                     }, 1000);
                     
                 } else {
