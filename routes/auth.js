@@ -561,4 +561,29 @@ router.get('/check', async (req, res) => {
   }
 });
 
+// Logout endpoint
+router.post('/logout', (req, res) => {
+  try {
+    // Destroy session if it exists
+    if (req.session) {
+      req.session.destroy((err) => {
+        if (err) {
+          console.log('Session destroy error:', err);
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  }
+});
+
 export default router;

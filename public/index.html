@@ -585,22 +585,32 @@
                 return;
             }
 
-            tradesList.innerHTML = trades.map(trade => `
+            tradesList.innerHTML = trades.map(trade => {
+                // Handle undefined values safely
+                const symbol = trade.symbol || 'N/A';
+                const date = trade.date || 'N/A';
+                const type = (trade.type || 'buy').toUpperCase();
+                const quantity = trade.quantity || 0;
+                const price = trade.price || 0;
+                const total = quantity * price;
+                
+                return `
                 <div class="portfolio-item">
                     <div>
-                        <span class="symbol">${trade.symbol}</span>
-                        <small style="color: #666; margin-left: 10px;">${trade.date}</small>
+                        <span class="symbol">${symbol}</span>
+                        <small style="color: #666; margin-left: 10px;">${date}</small>
                     </div>
                     <div>
-                        <span style="color: ${trade.type === 'BUY' ? '#28a745' : '#dc3545'};">
-                            ${trade.type} ${trade.quantity} @ ₹${trade.price}
+                        <span style="color: ${type === 'BUY' ? '#28a745' : '#dc3545'};">
+                            ${type} ${quantity} @ ₹${price}
                         </span>
                         <small style="color: #666; margin-left: 10px;">
-                            ₹${(trade.quantity * trade.price).toLocaleString()}
+                            ₹${total.toLocaleString()}
                         </small>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function updatePortfolioSummary() {
@@ -796,13 +806,23 @@
         }
 
         function logout() {
+            // Clear everything first
+            currentUser = null;
+            trades = [];
+            
+            // Clear localStorage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // Call logout endpoint
             fetch(`${RAILWAY_BACKEND_URL}/api/auth/logout`, {
                 method: 'POST',
                 credentials: 'include'
+            }).catch(error => {
+                console.log('Logout API call failed:', error);
             }).finally(() => {
-                currentUser = null;
-                trades = [];
-                showAuthSection();
+                // Force redirect to auth page
+                window.location.href = '/auth';
             });
         }
 
