@@ -2,8 +2,15 @@ import express from 'express';
 import { registerUser, loginUser } from '../middleware/auth.js';
 import { userQueries, friendshipQueries, sharingQueries } from '../database/db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import config from '../config.js';
 
 const router = express.Router();
+
+// In-memory user store for offline mode
+const offlineUsers = new Map();
+let nextUserId = 1;
 
 // Register new user
 router.post('/register', async (req, res) => {
@@ -16,29 +23,75 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    const result = await registerUser(username, email, password, fullName);
-    
-    // Set session if using session-based auth
-    req.session.userId = result.user.id;
-    req.session.username = result.user.username;
-    
-    res.status(201).json({
-      success: true,
-      message: 'User registered successfully',
-      ...result
-    });
-    
-  } catch (error) {
-    console.error('Registration error:', error);
-    
-    // Check if it's a database connection error
-    if (error.message.includes('connection') || error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
-      return res.status(503).json({ 
-        error: 'Database is currently offline. Please try again later or contact support.',
-        type: 'database_offline'
+    try {
+      const result = await registerUser(username, email, password, fullName);
+      
+      // Set session if using session-based auth
+      req.session.userId = result.user.id;
+      req.session.username = result.user.username;
+      
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully',
+        ...result
+      });
+      
+    } catch (dbError) {
+      console.log('❌ Database error, using offline mode for registration:', dbError.message);
+      
+      // Check if user already exists in offline store
+      for (const [id, user] of offlineUsers) {
+        if (user.username === username || user.email === email) {
+          return res.status(400).json({
+            error: 'Username or email already exists'
+          });
+        }
+      }
+      
+      // Create offline user
+      const userId = nextUserId++;
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = {
+        id: userId,
+        username,
+        email,
+        full_name: fullName || username,
+        is_public: false,
+        created_at: new Date().toISOString(),
+        password_hash: hashedPassword
+      };
+      
+      offlineUsers.set(userId, user);
+      
+      // Set session
+      req.session.userId = userId;
+      req.session.username = username;
+      
+      console.log('✅ Offline registration successful:', {
+        userId: req.session.userId,
+        username: req.session.username,
+        sessionId: req.sessionID,
+        totalOfflineUsers: offlineUsers.size
+      });
+      
+      const token = jwt.sign({ id: userId }, config.auth.jwtSecret, { expiresIn: '7d' });
+      
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully (offline mode)',
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          full_name: user.full_name,
+          is_public: user.is_public
+        },
+        token
       });
     }
     
+  } catch (error) {
+    console.error('Registration error:', error);
     res.status(400).json({ 
       error: error.message || 'Registration failed' 
     });
@@ -56,35 +109,79 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const result = await loginUser(identifier, password);
-    
-    // Set session
-    req.session.userId = result.user.id;
-    req.session.username = result.user.username;
-    
-    console.log('✅ Login successful, session set:', {
-      userId: req.session.userId,
-      username: req.session.username,
-      sessionId: req.sessionID
-    });
-    
-    res.json({
-      success: true,
-      message: 'Login successful',
-      ...result
-    });
-    
-  } catch (error) {
-    console.error('Login error:', error);
-    
-    // Check if it's a database connection error
-    if (error.message.includes('connection') || error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
-      return res.status(503).json({ 
-        error: 'Database is currently offline. Please try again later or contact support.',
-        type: 'database_offline'
+    try {
+      const result = await loginUser(identifier, password);
+      
+      // Set session
+      req.session.userId = result.user.id;
+      req.session.username = result.user.username;
+      
+      console.log('✅ Login successful, session set:', {
+        userId: req.session.userId,
+        username: req.session.username,
+        sessionId: req.sessionID
+      });
+      
+      res.json({
+        success: true,
+        message: 'Login successful',
+        ...result
+      });
+      
+    } catch (dbError) {
+      console.log('❌ Database error, using offline mode for login:', dbError.message);
+      
+      // Try offline login
+      let foundUser = null;
+      for (const [id, user] of offlineUsers) {
+        if (user.username === identifier || user.email === identifier) {
+          foundUser = user;
+          break;
+        }
+      }
+      
+      if (!foundUser) {
+        return res.status(401).json({
+          error: 'Invalid credentials'
+        });
+      }
+      
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, foundUser.password_hash);
+      if (!isValidPassword) {
+        return res.status(401).json({
+          error: 'Invalid credentials'
+        });
+      }
+      
+      // Set session
+      req.session.userId = foundUser.id;
+      req.session.username = foundUser.username;
+      
+      console.log('✅ Offline login successful, session set:', {
+        userId: req.session.userId,
+        username: req.session.username,
+        sessionId: req.sessionID
+      });
+      
+      const token = jwt.sign({ id: foundUser.id }, config.auth.jwtSecret, { expiresIn: '7d' });
+      
+      res.json({
+        success: true,
+        message: 'Login successful (offline mode)',
+        user: {
+          id: foundUser.id,
+          username: foundUser.username,
+          email: foundUser.email,
+          full_name: foundUser.full_name,
+          is_public: foundUser.is_public
+        },
+        token
       });
     }
     
+  } catch (error) {
+    console.error('Login error:', error);
     res.status(401).json({ 
       error: error.message || 'Login failed' 
     });
@@ -352,10 +449,27 @@ router.get('/me', async (req, res) => {
           });
         }
       } catch (dbError) {
-        console.log('❌ Database error in /me:', dbError.message);
+        console.log('❌ Database error in /me, checking offline users:', dbError.message);
+        
+        // Check offline users
+        const offlineUser = offlineUsers.get(req.session.userId);
+        if (offlineUser) {
+          console.log('✅ Offline user found via session:', offlineUser.username);
+          return res.json({
+            success: true,
+            user: {
+              id: offlineUser.id,
+              username: offlineUser.username,
+              email: offlineUser.email,
+              full_name: offlineUser.full_name,
+              is_public: offlineUser.is_public
+            }
+          });
+        }
+        
         return res.status(503).json({
           success: false,
-          error: 'Database is currently offline'
+          error: 'Database is currently offline and no offline user found'
         });
       }
     }
