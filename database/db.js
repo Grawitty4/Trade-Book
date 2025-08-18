@@ -9,14 +9,49 @@ const { Pool } = pkg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Create PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: config.database.url,
-  max: config.database.max,
-  idleTimeoutMillis: config.database.idleTimeoutMillis,
-  connectionTimeoutMillis: config.database.connectionTimeoutMillis,
-  ssl: config.app.nodeEnv === 'production' ? { rejectUnauthorized: false } : false
-});
+// Create PostgreSQL connection pool with error handling
+let poolConfig;
+try {
+  if (config.database.url && config.database.url !== 'postgresql://username:password@host:port/cursor_trade_book') {
+    // Use connection string if valid
+    poolConfig = {
+      connectionString: config.database.url,
+      max: config.database.max,
+      idleTimeoutMillis: config.database.idleTimeoutMillis,
+      connectionTimeoutMillis: config.database.connectionTimeoutMillis,
+      ssl: config.app.nodeEnv === 'production' ? { rejectUnauthorized: false } : false
+    };
+  } else {
+    // Use individual connection parameters as fallback
+    poolConfig = {
+      host: config.database.host,
+      port: config.database.port,
+      database: config.database.database,
+      user: config.database.user,
+      password: config.database.password,
+      max: config.database.max,
+      idleTimeoutMillis: config.database.idleTimeoutMillis,
+      connectionTimeoutMillis: config.database.connectionTimeoutMillis,
+      ssl: config.app.nodeEnv === 'production' ? { rejectUnauthorized: false } : false
+    };
+  }
+} catch (error) {
+  console.error('❌ Database configuration error:', error.message);
+  // Use minimal fallback config that won't crash
+  poolConfig = {
+    host: 'localhost',
+    port: 5432,
+    database: 'postgres',
+    user: 'postgres',
+    password: 'password',
+    max: 5,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+    ssl: false
+  };
+}
+
+const pool = new Pool(poolConfig);
 
 // Test database connection
 export const testConnection = async () => {
@@ -295,9 +330,13 @@ export const sharingQueries = {
 };
 
 // Graceful shutdown
+let poolClosed = false;
 export const closePool = async () => {
-  await pool.end();
-  console.log('🔌 Database connection pool closed');
+  if (!poolClosed) {
+    poolClosed = true;
+    await pool.end();
+    console.log('🔌 Database connection pool closed');
+  }
 };
 
 // Handle process termination

@@ -159,20 +159,25 @@ app.get('/api/health', (req, res) => {
 
 // Initialize database and start server
 async function startServer() {
+    console.log('🚀 Starting Trade Book Server...');
+    
+    let dbConnected = false;
+    
+    // Try database connection with robust error handling
     try {
-        console.log('🚀 Starting Trade Book Server...');
-        
-        // Test database connection
-        const dbConnected = await testConnection();
-        if (!dbConnected) {
-            console.log('⚠️ Database connection failed. Please check your Railway PostgreSQL configuration.');
-            console.log('💡 Update config.js with your Railway database URL');
-            console.log('📖 Continuing with limited functionality...');
-        } else {
-            // Initialize database schema
+        dbConnected = await testConnection();
+        if (dbConnected) {
             await initializeDatabase();
+            console.log('✅ Database initialized successfully');
         }
-        
+    } catch (error) {
+        console.log('⚠️ Database connection failed:', error.message);
+        console.log('📖 Continuing with limited functionality...');
+        dbConnected = false;
+    }
+    
+    // Start server regardless of database status
+    try {
         app.listen(PORT, () => {
             console.log('🎉 Trade Book Server Started Successfully!');
             console.log('='.repeat(60));
@@ -180,6 +185,7 @@ async function startServer() {
             console.log(`🔐 Login/Register: http://localhost:${PORT}/auth`);
             console.log(`🔧 Legacy Interface: http://localhost:${PORT}/old`);
             console.log(`🩺 Health Check: http://localhost:${PORT}/api/health`);
+            console.log(`🔍 Railway Health: http://localhost:${PORT}/railway-health`);
             console.log('');
             console.log('✨ New Features:');
             console.log('   🔐 User authentication (JWT + Sessions)');
@@ -189,7 +195,7 @@ async function startServer() {
             console.log('   🔍 Real-time stock data scraping');
             console.log('   📈 Multi-user portfolio management');
             console.log('');
-            console.log('📊 Database Status:', dbConnected ? '✅ Connected' : '❌ Offline');
+            console.log(`📊 Database Status: ${dbConnected ? '✅ Online' : '❌ Offline'}`);
             console.log('🔑 Authentication: ✅ Enabled');
             console.log('👥 Social Features: ✅ Ready');
             console.log('');
@@ -198,9 +204,8 @@ async function startServer() {
             console.log('   2. Login and start building your portfolio');
             console.log('   3. Add friends and share your trading success!');
         });
-        
     } catch (error) {
-        console.error('💥 Server startup failed:', error);
+        console.error('❌ Failed to start server:', error.message);
         process.exit(1);
     }
 }
