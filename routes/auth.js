@@ -325,6 +325,56 @@ router.get('/shared-portfolios', authenticateToken, async (req, res) => {
   }
 });
 
+// Get current user info (for frontend)
+router.get('/me', async (req, res) => {
+  try {
+    console.log('🔍 /api/auth/me called:', {
+      hasSession: !!req.session,
+      sessionUserId: req.session?.userId,
+      sessionId: req.sessionID
+    });
+
+    // Check session-based auth first (for browser requests)
+    if (req.session && req.session.userId) {
+      try {
+        const user = await userQueries.findUserById(req.session.userId);
+        if (user) {
+          console.log('✅ User found via session:', user.username);
+          return res.json({
+            success: true,
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              full_name: user.full_name,
+              is_public: user.is_public
+            }
+          });
+        }
+      } catch (dbError) {
+        console.log('❌ Database error in /me:', dbError.message);
+        return res.status(503).json({
+          success: false,
+          error: 'Database is currently offline'
+        });
+      }
+    }
+
+    // If no session, return not authenticated
+    console.log('🚫 No valid session found');
+    res.status(401).json({
+      success: false,
+      error: 'Not authenticated'
+    });
+  } catch (error) {
+    console.error('❌ Error in /api/auth/me:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error'
+    });
+  }
+});
+
 // Check authentication status
 router.get('/check', async (req, res) => {
   try {
