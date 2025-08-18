@@ -94,22 +94,100 @@ app.get('/old', (req, res) => {
 });
 
 // Trade Book API endpoints
-app.get('/api/trades', async (req, res) => {
+app.get('/api/trades', optionalAuth, async (req, res) => {
     try {
-        const data = await fs.readFile('trade-data.json', 'utf8');
-        res.json(JSON.parse(data));
+        console.log('🔍 GET /api/trades called:', {
+            hasUser: !!req.user,
+            userId: req.user?.id,
+            sessionUserId: req.session?.userId
+        });
+
+        // Check if user is authenticated
+        if (!req.user && !req.session?.userId) {
+            console.log('❌ No authentication for trades endpoint');
+            return res.status(401).json({ 
+                success: false,
+                error: 'Authentication required',
+                trades: [] // Return empty array so frontend doesn't crash
+            });
+        }
+
+        // Get user ID from either req.user or session
+        const userId = req.user?.id || req.session?.userId;
+        
+        try {
+            // Try to get trades from database
+            const { tradeQueries } = await import('./database/db.js');
+            const trades = await tradeQueries.getUserTrades(userId);
+            
+            console.log('✅ Retrieved trades from database:', trades.length);
+            res.json({
+                success: true,
+                trades: trades || [] // Ensure it's always an array
+            });
+        } catch (dbError) {
+            console.log('❌ Database error getting trades:', dbError.message);
+            // Return empty trades array when database is offline
+            res.json({
+                success: false,
+                error: 'Database offline',
+                trades: [] // Return empty array so frontend doesn't crash
+            });
+        }
     } catch (error) {
-        res.status(404).json({ error: 'No trade data found' });
+        console.error('❌ Error in GET /api/trades:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Server error',
+            trades: [] // Return empty array so frontend doesn't crash
+        });
     }
 });
 
-app.post('/api/trades', async (req, res) => {
+app.post('/api/trades', optionalAuth, async (req, res) => {
     try {
-        const data = req.body;
-        await fs.writeFile('trade-data.json', JSON.stringify(data, null, 2));
-        res.json({ success: true, message: 'Data saved successfully' });
+        console.log('🔍 POST /api/trades called:', {
+            hasUser: !!req.user,
+            userId: req.user?.id,
+            sessionUserId: req.session?.userId,
+            body: req.body
+        });
+
+        // Check if user is authenticated
+        if (!req.user && !req.session?.userId) {
+            return res.status(401).json({ 
+                success: false,
+                error: 'Authentication required' 
+            });
+        }
+
+        // Get user ID from either req.user or session
+        const userId = req.user?.id || req.session?.userId;
+        
+        try {
+            // Try to save trade to database
+            const { tradeQueries } = await import('./database/db.js');
+            const trade = await tradeQueries.createTrade(userId, req.body);
+            
+            console.log('✅ Trade saved to database:', trade.id);
+            res.json({
+                success: true,
+                message: 'Trade saved successfully',
+                trade: trade
+            });
+        } catch (dbError) {
+            console.log('❌ Database error saving trade:', dbError.message);
+            res.status(503).json({
+                success: false,
+                error: 'Database offline - trade not saved'
+            });
+        }
     } catch (error) {
-        res.status(500).json({ error: 'Failed to save data' });
+        console.error('❌ Error in POST /api/trades:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Server error' 
+        });
     }
 });
 

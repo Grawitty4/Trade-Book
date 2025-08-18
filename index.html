@@ -498,17 +498,41 @@
                 });
 
                 if (response.ok) {
-                    trades = await response.json();
+                    const result = await response.json();
+                    console.log('📊 Trades response:', result);
+                    
+                    // Handle new API response format
+                    if (result.trades) {
+                        trades = result.trades; // Extract trades array from response
+                    } else if (Array.isArray(result)) {
+                        trades = result; // Handle old format if still used
+                    } else {
+                        trades = []; // Fallback to empty array
+                    }
+                    
+                    console.log('📈 Loaded trades:', trades.length);
                     displayTrades();
                     updatePortfolioSummary();
+                } else {
+                    console.log('❌ Failed to load trades:', response.status);
+                    trades = []; // Set empty array on error
+                    displayTrades();
                 }
             } catch (error) {
                 console.error('Load trades failed:', error);
+                trades = []; // Set empty array on error
+                displayTrades();
             }
         }
 
         function displayTrades() {
             const tradesList = document.getElementById('tradesList');
+            
+            // Ensure trades is always an array
+            if (!Array.isArray(trades)) {
+                console.log('⚠️ Trades is not an array:', typeof trades, trades);
+                trades = [];
+            }
             
             if (trades.length === 0) {
                 tradesList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No trades added yet. Add your first trade above!</p>';
