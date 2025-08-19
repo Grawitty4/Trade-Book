@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trade Book - Simple & Working</title>
+    <title>Trade Book - Working Version</title>
     <style>
         * {
             margin: 0;
@@ -35,21 +35,13 @@
             margin-bottom: 10px;
         }
 
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
         .auth-section {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .main-app {
-            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 40px;
+            margin: 0 auto;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
 
         .tabs {
@@ -59,189 +51,210 @@
         }
 
         .tab {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
+            flex: 1;
+            padding: 15px;
+            background: #f8f9fa;
             border: none;
-            padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 16px;
+            font-weight: 600;
             transition: all 0.3s ease;
         }
 
         .tab.active {
-            background: white;
-            color: #667eea;
+            background: #667eea;
+            color: white;
         }
 
-        .tab-content {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        .tab:hover {
+            background: #555;
+            color: white;
         }
 
-        .form-section {
-            margin-bottom: 30px;
-        }
-
-        .form-section h3 {
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            align-items: end;
+        .auth-form {
+            animation: fadeIn 0.3s ease;
         }
 
         .form-group {
-            flex: 1;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-weight: 600;
-            color: #555;
+            color: #333;
         }
 
-        .form-group input, .form-group select {
+        .form-group input {
             width: 100%;
-            padding: 12px;
+            padding: 15px;
             border: 2px solid #e9ecef;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 16px;
             transition: border-color 0.3s ease;
         }
 
-        .form-group input:focus, .form-group select:focus {
+        .form-group input:focus {
             outline: none;
             border-color: #667eea;
         }
 
         .btn {
+            width: 100%;
+            padding: 15px;
             background: #667eea;
             color: white;
             border: none;
-            padding: 12px 24px;
             border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 1rem;
-            transition: background 0.3s ease;
+            transition: all 0.3s ease;
         }
 
         .btn:hover {
-            background: #5a67d8;
+            background: #5a6fd8;
+            transform: translateY(-2px);
         }
 
-        .btn.success {
-            background: #28a745;
-        }
-
-        .btn.danger {
-            background: #dc3545;
-        }
-
-        .status {
-            margin: 15px 0;
-            padding: 12px;
+        .status-message {
+            margin-top: 15px;
+            padding: 10px;
             border-radius: 8px;
             text-align: center;
+            font-weight: 600;
         }
 
-        .status.success {
+        .status-success {
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
         }
 
-        .status.error {
+        .status-error {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
 
-        .user-info {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .portfolio-item {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .portfolio-item .symbol {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .portfolio-item .pnl.positive {
-            color: #28a745;
-        }
-
-        .portfolio-item .pnl.negative {
-            color: #dc3545;
-        }
-
-        .stock-data {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
+        .main-app {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
             margin-top: 20px;
         }
 
-        .stock-data h4 {
-            margin-bottom: 15px;
-            color: #333;
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .stock-data-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
+        .app-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
         }
 
-        .stock-data-item {
-            text-align: center;
-            padding: 10px;
-            background: white;
-            border-radius: 6px;
-        }
-
-        .stock-data-item .label {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 5px;
-        }
-
-        .stock-data-item .value {
-            font-size: 1.1rem;
+        .app-tab {
+            padding: 12px 24px;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
             font-weight: 600;
-            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .app-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .form-row button {
+            flex-shrink: 0;
+            height: 52px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .auth-section,
+            .main-app {
+                padding: 20px;
+            }
+            
             .form-row {
                 flex-direction: column;
             }
             
-            .tabs {
+            .app-tabs {
                 flex-direction: column;
             }
         }
@@ -250,21 +263,21 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 Trade Book</h1>
-            <p>Simple & Working Trade Management System</p>
+            <h1>📈 Trade Book</h1>
+            <p>Manage your trades and portfolio with ease</p>
         </div>
 
         <!-- Auth Section -->
         <div id="authSection" class="auth-section">
-            <div class="tabs" style="margin-bottom: 20px;">
+            <div class="tabs">
                 <button class="tab active" onclick="switchAuthTab('login')">Login</button>
                 <button class="tab" onclick="switchAuthTab('register')">Register</button>
             </div>
 
             <!-- Login Form -->
             <div id="loginForm" class="auth-form">
-                <h2>Login to Trade Book</h2>
-                <p style="margin-bottom: 20px;">Enter your credentials to access your portfolio</p>
+                <h2 style="margin-bottom: 20px;">Login to Trade Book</h2>
+                <p style="margin-bottom: 20px; color: #666;">Enter your credentials to access your portfolio</p>
                 
                 <div class="form-group">
                     <label>Username or Email</label>
@@ -274,14 +287,14 @@
                     <label>Password</label>
                     <input type="password" id="loginPassword" placeholder="Enter your password" required>
                 </div>
-                <button onclick="login()" class="btn" style="width: 100%; margin-top: 10px;">Login</button>
+                <button onclick="login()" class="btn">Login</button>
                 <div id="loginStatus"></div>
             </div>
 
             <!-- Register Form -->
             <div id="registerForm" class="auth-form" style="display: none;">
-                <h2>Create Account</h2>
-                <p style="margin-bottom: 20px;">Join Trade Book to start managing your portfolio</p>
+                <h2 style="margin-bottom: 20px;">Create Account</h2>
+                <p style="margin-bottom: 20px; color: #666;">Join Trade Book to start managing your portfolio</p>
                 
                 <div class="form-group">
                     <label>Username</label>
@@ -299,154 +312,111 @@
                     <label>Password</label>
                     <input type="password" id="registerPassword" placeholder="Create a password" required>
                 </div>
-                <button onclick="register()" class="btn" style="width: 100%; margin-top: 10px;">Create Account</button>
+                <button onclick="register()" class="btn">Create Account</button>
                 <div id="registerStatus"></div>
             </div>
         </div>
 
-        <!-- Main Application -->
+        <!-- Main App -->
         <div id="mainApp" class="main-app">
-            <!-- User Info Bar -->
             <div class="user-info">
                 <div>
                     <h3 id="welcomeUser">Welcome!</h3>
-                    <p id="userEmail" style="margin: 5px 0 0 0; opacity: 0.8; font-size: 0.9rem;"></p>
+                    <p id="userEmail">user@example.com</p>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="logout()" class="btn danger">Logout</button>
-                </div>
+                <button onclick="logout()" class="btn" style="width: auto; padding: 10px 20px;">Logout</button>
             </div>
 
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab('stock-scraper')">📈 Stock Data</button>
-                <button class="tab" onclick="switchTab('trade-book')">💼 Trade Book</button>
-                <button class="tab" onclick="switchTab('friends')">👥 Friends</button>
+            <div class="app-tabs">
+                <button class="app-tab active" onclick="switchAppTab('trades')">💼 Trade Book</button>
+                <button class="app-tab" onclick="switchAppTab('friends')">👥 Friends</button>
+                <button class="app-tab" onclick="switchAppTab('portfolio')">📊 Portfolio</button>
             </div>
 
-            <div class="content">
-                <!-- Stock Scraper Tab -->
-                <div id="stock-scraper" class="tab-content">
-                    <h2>📈 Stock Data</h2>
-                    <p style="margin-bottom: 20px; color: #666;">Get stock information (mock data for demo)</p>
-                    
+            <!-- Trades Tab -->
+            <div id="trades" class="tab-content active">
+                <h2>💼 Trade Book</h2>
+                
+                <div class="form-section">
+                    <h3>Add New Trade</h3>
                     <div class="form-row">
                         <div class="form-group">
-                            <input type="text" id="stockSymbol" placeholder="Enter stock symbol (e.g., RELIANCE, TCS)" required>
+                            <label>Stock Symbol</label>
+                            <input type="text" id="tradeSymbol" placeholder="e.g., RELIANCE, TCS" required>
                         </div>
-                        <button onclick="getStockData()" class="btn">Get Data</button>
-                    </div>
-                    <div id="stockStatus"></div>
-                    <div id="stockData" style="display: none;" class="stock-data">
-                        <h4>Stock Information</h4>
-                        <div class="stock-data-grid">
-                            <div class="stock-data-item">
-                                <div class="label">Price</div>
-                                <div class="value" id="stockPrice">-</div>
-                            </div>
-                            <div class="stock-data-item">
-                                <div class="label">Change</div>
-                                <div class="value" id="stockChange">-</div>
-                            </div>
-                            <div class="stock-data-item">
-                                <div class="label">Volume</div>
-                                <div class="value" id="stockVolume">-</div>
-                            </div>
-                            <div class="stock-data-item">
-                                <div class="label">High</div>
-                                <div class="value" id="stockHigh">-</div>
-                            </div>
-                            <div class="stock-data-item">
-                                <div class="label">Low</div>
-                                <div class="value" id="stockLow">-</div>
-                            </div>
-                            <div class="stock-data-item">
-                                <div class="label">Market Cap</div>
-                                <div class="value" id="stockMarketCap">-</div>
-                            </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="tradeType" required>
+                                <option value="">Select Type</option>
+                                <option value="buy">Buy</option>
+                                <option value="sell">Sell</option>
+                            </select>
                         </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" id="tradeQuantity" placeholder="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Price (₹)</label>
+                            <input type="number" id="tradePrice" step="0.01" placeholder="1500.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="tradeDate" required>
+                        </div>
+                        <button type="button" onclick="addTrade()" class="btn">Add Trade</button>
                     </div>
+                    <div id="tradeStatus"></div>
                 </div>
 
-                <!-- Trade Book Tab -->
-                <div id="trade-book" class="tab-content" style="display: none;">
-                    <h2>💼 Trade Book</h2>
-                    
-                    <div class="form-section">
-                        <h3>Add New Trade</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Stock Symbol</label>
-                                <input type="text" id="tradeSymbol" placeholder="e.g., RELIANCE" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Type</label>
-                                <select id="tradeType" required>
-                                    <option value="buy">Buy</option>
-                                    <option value="sell">Sell</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Quantity</label>
-                                <input type="number" id="tradeQuantity" placeholder="100" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Price</label>
-                                <input type="number" step="0.01" id="tradePrice" placeholder="2500.00" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Date</label>
-                                <input type="date" id="tradeDate" required>
-                            </div>
-                            <button type="button" onclick="addTrade()" class="btn">Add Trade</button>
-                        </div>
-                        <div id="tradeStatus"></div>
-                    </div>
-
-                    <div class="form-section">
-                        <h3>Your Trades</h3>
-                        <div id="tradesList">
-                            <p style="color: #666; text-align: center; padding: 20px;">No trades added yet. Add your first trade above!</p>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h3>Portfolio Summary</h3>
-                        <div id="portfolioSummary">
-                            <div class="portfolio-item">
-                                <div>
-                                    <span class="symbol">Total Investment</span>
-                                </div>
-                                <div>
-                                    <span id="totalInvestment">₹0</span>
-                                </div>
-                            </div>
-                        </div>
+                <div class="form-section">
+                    <h3>Trade History</h3>
+                    <div id="tradesContainer">
+                        <p>Loading trades...</p>
                     </div>
                 </div>
+            </div>
 
-                <!-- Friends Tab -->
-                <div id="friends" class="tab-content" style="display: none;">
-                    <h2>👥 Friends & Social</h2>
-                    
-                    <div class="form-section">
-                        <h3>Add Friend</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Select User to Add as Friend</label>
-                                <select id="friendUserSelect" required>
-                                    <option value="">Loading users...</option>
-                                </select>
-                            </div>
-                            <button type="button" onclick="addFriend()" class="btn">Add Friend</button>
+            <!-- Friends Tab -->
+            <div id="friends" class="tab-content">
+                <h2>👥 Friends & Social</h2>
+                
+                <div class="form-section">
+                    <h3>Add Friend</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Select User to Add as Friend</label>
+                            <select id="friendUserSelect" required>
+                                <option value="">Loading users...</option>
+                            </select>
                         </div>
-                        <div id="friendStatus"></div>
+                        <button type="button" onclick="addFriend()" class="btn">Add Friend</button>
                     </div>
+                    <div id="friendStatus"></div>
+                </div>
 
-                    <div class="form-section">
-                        <h3>Your Friends</h3>
-                        <div id="friendsList">
-                            <p style="color: #666; text-align: center; padding: 20px;">No friends added yet. Add your first friend above!</p>
+                <div class="form-section">
+                    <h3>Portfolio Visibility</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Portfolio Visibility</label>
+                            <select id="profileVisibility">
+                                <option value="private">Private</option>
+                                <option value="public">Public</option>
+                            </select>
                         </div>
+                        <button type="button" onclick="updateVisibility()" class="btn">Update</button>
+                    </div>
+                    <div id="visibilityStatus"></div>
+                </div>
+            </div>
+
+            <!-- Portfolio Tab -->
+            <div id="portfolio" class="tab-content">
+                <h2>📊 Portfolio Summary</h2>
+                <div class="form-section">
+                    <div id="portfolioSummary">
+                        <p>Portfolio analysis will appear here...</p>
                     </div>
                 </div>
             </div>
@@ -456,34 +426,17 @@
     <script>
         const BASE_URL = window.location.origin;
         let currentUser = null;
-        let trades = [];
 
-        // Initialize the app
+        // Set today's date as default
         document.addEventListener('DOMContentLoaded', function() {
-            checkAuthStatus();
-            setTodayDate();
-        });
-
-        function setTodayDate() {
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('tradeDate').value = today;
-        }
-
-        async function checkAuthStatus() {
-            try {
-                const response = await fetch(`${BASE_URL}/api/auth/me`);
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.user) {
-                        currentUser = result.user;
-                        showMainApp();
-                        loadTrades();
-                    }
-                }
-            } catch (error) {
-                console.log('Not authenticated');
+            if (document.getElementById('tradeDate')) {
+                document.getElementById('tradeDate').value = today;
             }
-        }
+            
+            // Check if user is already logged in
+            checkAuthStatus();
+        });
 
         function switchAuthTab(tab) {
             // Remove active class from all tabs
@@ -500,12 +453,29 @@
             }
         }
 
+        function switchAppTab(tabName) {
+            // Remove active class from all app tabs
+            document.querySelectorAll('.app-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            // Load specific tab data
+            if (tabName === 'trades') {
+                loadTrades();
+            } else if (tabName === 'friends') {
+                loadAvailableUsers();
+            }
+        }
+
         async function login() {
             const identifier = document.getElementById('loginIdentifier').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
             
             if (!identifier || !password) {
-                showLoginStatus('Please enter both username/email and password', 'error');
+                showLoginStatus('Please fill in all fields', 'error');
                 return;
             }
 
@@ -516,20 +486,18 @@
                     body: JSON.stringify({ identifier, password })
                 });
 
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success) {
-                        currentUser = result.user;
-                        showLoginStatus('Login successful!', 'success');
-                        setTimeout(() => {
-                            showMainApp();
-                            loadTrades();
-                        }, 1000);
-                    } else {
-                        showLoginStatus(result.error || 'Login failed', 'error');
-                    }
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    currentUser = result.user;
+                    showLoginStatus('Login successful!', 'success');
+                    setTimeout(() => {
+                        showMainApp();
+                        loadTrades();
+                        loadAvailableUsers();
+                    }, 1000);
                 } else {
-                    showLoginStatus('Login failed', 'error');
+                    showLoginStatus(result.error || 'Login failed', 'error');
                 }
             } catch (error) {
                 console.error('Login error:', error);
@@ -555,24 +523,39 @@
                     body: JSON.stringify({ username, email, fullName, password })
                 });
 
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success) {
-                        currentUser = result.user;
-                        showRegisterStatus('Registration successful!', 'success');
-                        setTimeout(() => {
-                            showMainApp();
-                            loadTrades();
-                        }, 1000);
-                    } else {
-                        showRegisterStatus(result.error || 'Registration failed', 'error');
-                    }
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    currentUser = result.user;
+                    showRegisterStatus('Registration successful!', 'success');
+                    setTimeout(() => {
+                        showMainApp();
+                        loadTrades();
+                        loadAvailableUsers();
+                    }, 1000);
                 } else {
-                    showRegisterStatus('Registration failed', 'error');
+                    showRegisterStatus(result.error || 'Registration failed', 'error');
                 }
             } catch (error) {
                 console.error('Registration error:', error);
                 showRegisterStatus('Network error. Please try again.', 'error');
+            }
+        }
+
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/auth/me`);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        currentUser = result.user;
+                        showMainApp();
+                        loadTrades();
+                        loadAvailableUsers();
+                    }
+                }
+            } catch (error) {
+                console.log('Not logged in');
             }
         }
 
@@ -583,83 +566,27 @@
             if (currentUser) {
                 document.getElementById('welcomeUser').textContent = `Welcome, ${currentUser.username}!`;
                 document.getElementById('userEmail').textContent = currentUser.email;
-                loadAvailableUsers(); // Load users for friend dropdown
             }
         }
 
         function showAuthSection() {
             document.getElementById('authSection').style.display = 'block';
             document.getElementById('mainApp').style.display = 'none';
+            currentUser = null;
         }
 
         async function logout() {
             try {
-                await fetch(`${BASE_URL}/api/auth/logout`, {
-                    method: 'POST'
-                });
+                await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST' });
             } catch (error) {
-                console.log('Logout API call failed:', error);
+                console.log('Logout request failed, but clearing session anyway');
             }
             
-            currentUser = null;
-            trades = [];
+            // Clear client-side data
+            localStorage.clear();
+            sessionStorage.clear();
+            
             showAuthSection();
-        }
-
-        function switchTab(tabName) {
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
-            
-            // Add active class to clicked tab
-            event.target.classList.add('active');
-            document.getElementById(tabName).style.display = 'block';
-        }
-
-        async function getStockData() {
-            const symbol = document.getElementById('stockSymbol').value.trim().toUpperCase();
-            
-            if (!symbol) {
-                showStockStatus('Please enter a stock symbol', 'error');
-                return;
-            }
-
-            try {
-                showStockStatus('Fetching stock data...', 'success');
-                
-                const response = await fetch(`${BASE_URL}/api/stock-data`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbol })
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        displayStockData(result.data);
-                        showStockStatus('Stock data loaded successfully!', 'success');
-                    } else {
-                        showStockStatus('Failed to fetch stock data', 'error');
-                    }
-                } else {
-                    showStockStatus('Failed to fetch stock data', 'error');
-                }
-            } catch (error) {
-                console.error('Stock data error:', error);
-                showStockStatus('Network error. Please try again.', 'error');
-            }
-        }
-
-        function displayStockData(data) {
-            document.getElementById('stockPrice').textContent = '₹' + data.price;
-            document.getElementById('stockChange').textContent = data.change + '%';
-            document.getElementById('stockChange').style.color = data.change >= 0 ? '#28a745' : '#dc3545';
-            document.getElementById('stockVolume').textContent = data.volume.toLocaleString();
-            document.getElementById('stockHigh').textContent = '₹' + data.high;
-            document.getElementById('stockLow').textContent = '₹' + data.low;
-            document.getElementById('stockMarketCap').textContent = data.market_cap;
-            
-            document.getElementById('stockData').style.display = 'block';
         }
 
         async function addTrade() {
@@ -668,8 +595,8 @@
             const quantity = parseInt(document.getElementById('tradeQuantity').value);
             const price = parseFloat(document.getElementById('tradePrice').value);
             const date = document.getElementById('tradeDate').value;
-
-            if (!symbol || !quantity || !price || !date) {
+            
+            if (!symbol || !type || !quantity || !price || !date) {
                 showTradeStatus('Please fill in all fields', 'error');
                 return;
             }
@@ -681,17 +608,21 @@
                     body: JSON.stringify({ symbol, type, quantity, price, date })
                 });
 
+                const result = await response.json();
+                
                 if (response.ok) {
-                    const result = await response.json();
-                    if (result.success) {
-                        showTradeStatus('Trade added successfully!', 'success');
-                        clearTradeForm();
-                        loadTrades();
-                    } else {
-                        showTradeStatus(result.error || 'Failed to add trade', 'error');
-                    }
+                    showTradeStatus('Trade added successfully!', 'success');
+                    
+                    // Clear form
+                    document.getElementById('tradeSymbol').value = '';
+                    document.getElementById('tradeType').value = '';
+                    document.getElementById('tradeQuantity').value = '';
+                    document.getElementById('tradePrice').value = '';
+                    
+                    // Reload trades
+                    loadTrades();
                 } else {
-                    showTradeStatus('Failed to add trade', 'error');
+                    showTradeStatus(result.error || 'Failed to add trade', 'error');
                 }
             } catch (error) {
                 console.error('Add trade error:', error);
@@ -702,76 +633,60 @@
         async function loadTrades() {
             try {
                 const response = await fetch(`${BASE_URL}/api/trades`);
+                const result = await response.json();
                 
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && Array.isArray(result.trades)) {
-                        trades = result.trades;
-                        displayTrades();
-                        updatePortfolioSummary();
-                    }
+                let trades = [];
+                if (result.trades && Array.isArray(result.trades)) {
+                    trades = result.trades;
+                } else if (Array.isArray(result)) {
+                    trades = result;
                 }
+
+                displayTrades(trades);
             } catch (error) {
                 console.error('Load trades error:', error);
+                document.getElementById('tradesContainer').innerHTML = '<p style="color: red;">Failed to load trades</p>';
             }
         }
 
-        function displayTrades() {
-            const tradesList = document.getElementById('tradesList');
+        function displayTrades(trades) {
+            const container = document.getElementById('tradesContainer');
             
-            if (trades.length === 0) {
-                tradesList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No trades added yet. Add your first trade above!</p>';
+            if (!Array.isArray(trades) || trades.length === 0) {
+                container.innerHTML = '<p>No trades found. Add your first trade above!</p>';
                 return;
             }
 
-            tradesList.innerHTML = trades.map(trade => {
-                const symbol = trade.symbol || 'N/A';
-                const date = trade.date || 'N/A';
-                const type = (trade.type || 'buy').toUpperCase();
-                const quantity = trade.quantity || 0;
-                const price = trade.price || 0;
-                const total = quantity * price;
-                
-                return `
-                <div class="portfolio-item">
-                    <div>
-                        <span class="symbol">${symbol}</span>
-                        <small style="color: #666; margin-left: 10px;">${date}</small>
-                    </div>
-                    <div>
-                        <span style="color: ${type === 'BUY' ? '#28a745' : '#dc3545'};">
-                            ${type} ${quantity} @ ₹${price}
-                        </span>
-                        <small style="color: #666; margin-left: 10px;">
-                            ₹${total.toLocaleString()}
-                        </small>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        function updatePortfolioSummary() {
-            let totalInvestment = 0;
+            const html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Symbol</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Price (₹)</th>
+                            <th>Value (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${trades.map(trade => `
+                            <tr>
+                                <td>${trade.date || 'N/A'}</td>
+                                <td>${trade.symbol || 'N/A'}</td>
+                                <td style="color: ${(trade.type || '').toUpperCase() === 'BUY' ? 'green' : 'red'}">
+                                    ${(trade.type || 'N/A').toUpperCase()}
+                                </td>
+                                <td>${trade.quantity || 0}</td>
+                                <td>₹${trade.price || 0}</td>
+                                <td>₹${((trade.quantity || 0) * (trade.price || 0)).toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
             
-            trades.forEach(trade => {
-                const amount = (trade.quantity || 0) * (trade.price || 0);
-                if (trade.type === 'buy') {
-                    totalInvestment += amount;
-                } else {
-                    totalInvestment -= amount;
-                }
-            });
-
-            document.getElementById('totalInvestment').textContent = '₹' + totalInvestment.toLocaleString();
-        }
-
-        function clearTradeForm() {
-            document.getElementById('tradeSymbol').value = '';
-            document.getElementById('tradeType').value = 'buy';
-            document.getElementById('tradeQuantity').value = '';
-            document.getElementById('tradePrice').value = '';
-            setTodayDate();
+            container.innerHTML = html;
         }
 
         async function loadAvailableUsers() {
@@ -821,7 +736,7 @@
                 const response = await fetch(`${BASE_URL}/api/friends/add`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ friendIdentifier: selectedUser })
+                    body: JSON.stringify({ username: selectedUser })
                 });
 
                 if (response.ok) {
@@ -832,21 +747,49 @@
                     showFriendStatus('Failed to add friend', 'error');
                 }
             } catch (error) {
-                showFriendStatus('Network error', 'error');
+                console.error('Add friend error:', error);
+                showFriendStatus('Network error. Please try again.', 'error');
+            }
+        }
+
+        async function updateVisibility() {
+            const visibility = document.getElementById('profileVisibility').value;
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/auth/profile/visibility`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isPublic: visibility === 'public' })
+                });
+
+                if (response.ok) {
+                    showVisibilityStatus('Visibility updated successfully!', 'success');
+                } else {
+                    showVisibilityStatus('Failed to update visibility', 'error');
+                }
+            } catch (error) {
+                console.error('Update visibility error:', error);
+                showVisibilityStatus('Network error. Please try again.', 'error');
             }
         }
 
         // Status display functions
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+            
+            // Clear after 5 seconds
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
         function showLoginStatus(message, type) {
             showStatus('loginStatus', message, type);
         }
 
         function showRegisterStatus(message, type) {
             showStatus('registerStatus', message, type);
-        }
-
-        function showStockStatus(message, type) {
-            showStatus('stockStatus', message, type);
         }
 
         function showTradeStatus(message, type) {
@@ -857,10 +800,8 @@
             showStatus('friendStatus', message, type);
         }
 
-        function showStatus(elementId, message, type) {
-            const statusDiv = document.getElementById(elementId);
-            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
-            setTimeout(() => statusDiv.innerHTML = '', 3000);
+        function showVisibilityStatus(message, type) {
+            showStatus('visibilityStatus', message, type);
         }
     </script>
 </body>
