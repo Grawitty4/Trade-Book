@@ -432,7 +432,10 @@
                         <h3>Add Friend</h3>
                         <div class="form-row">
                             <div class="form-group">
-                                <input type="text" id="friendUsername" placeholder="Friend's username" required>
+                                <label>Select User to Add as Friend</label>
+                                <select id="friendUserSelect" required>
+                                    <option value="">Loading users...</option>
+                                </select>
                             </div>
                             <button type="button" onclick="addFriend()" class="btn">Add Friend</button>
                         </div>
@@ -580,6 +583,7 @@
             if (currentUser) {
                 document.getElementById('welcomeUser').textContent = `Welcome, ${currentUser.username}!`;
                 document.getElementById('userEmail').textContent = currentUser.email;
+                loadAvailableUsers(); // Load users for friend dropdown
             }
         }
 
@@ -770,11 +774,46 @@
             setTodayDate();
         }
 
-        async function addFriend() {
-            const friendUsername = document.getElementById('friendUsername').value.trim();
+        async function loadAvailableUsers() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/users`);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.users) {
+                        populateUserDropdown(result.users);
+                    }
+                } else {
+                    console.log('Failed to load users');
+                }
+            } catch (error) {
+                console.error('Load users error:', error);
+            }
+        }
+
+        function populateUserDropdown(users) {
+            const select = document.getElementById('friendUserSelect');
             
-            if (!friendUsername) {
-                showFriendStatus('Please enter a username', 'error');
+            if (users.length === 0) {
+                select.innerHTML = '<option value="">No other users found</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="">Select a user to add as friend</option>';
+            
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.username;
+                option.textContent = `${user.full_name} (@${user.username}) - ${user.email}`;
+                select.appendChild(option);
+            });
+        }
+
+        async function addFriend() {
+            const selectedUser = document.getElementById('friendUserSelect').value;
+            
+            if (!selectedUser) {
+                showFriendStatus('Please select a user to add as friend', 'error');
                 return;
             }
 
@@ -782,13 +821,13 @@
                 const response = await fetch(`${BASE_URL}/api/friends/add`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ friendIdentifier: friendUsername })
+                    body: JSON.stringify({ friendIdentifier: selectedUser })
                 });
 
                 if (response.ok) {
                     const result = await response.json();
                     showFriendStatus(result.message, 'success');
-                    document.getElementById('friendUsername').value = '';
+                    document.getElementById('friendUserSelect').value = '';
                 } else {
                     showFriendStatus('Failed to add friend', 'error');
                 }

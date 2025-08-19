@@ -390,6 +390,49 @@ app.post('/api/trades', async (req, res) => {
     }
 });
 
+// Get all users (for friend selection dropdown)
+app.get('/api/users', async (req, res) => {
+    if (!currentUser) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    try {
+        let users = [];
+
+        if (dbAvailable && pool) {
+            try {
+                const result = await pool.query(
+                    'SELECT id, username, full_name, email FROM cursor_trade_book.users WHERE id != $1 ORDER BY username',
+                    [currentUser.id]
+                );
+                users = result.rows;
+            } catch (dbError) {
+                console.log('Database error getting users, using memory:', dbError.message);
+                dbAvailable = false;
+            }
+        }
+
+        if (!dbAvailable) {
+            // Get users from memory (excluding current user)
+            for (const [id, userData] of users) {
+                if (id !== currentUser.id) {
+                    users.push({
+                        id: id,
+                        username: userData.username,
+                        full_name: userData.full_name,
+                        email: userData.email
+                    });
+                }
+            }
+        }
+
+        res.json({ success: true, users: users });
+    } catch (error) {
+        console.error('Get users error:', error);
+        res.status(500).json({ error: 'Failed to get users', users: [] });
+    }
+});
+
 // Friends endpoints (simplified)
 app.get('/api/friends', (req, res) => {
     if (!currentUser) {
