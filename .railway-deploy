@@ -1,0 +1,3 @@
+force-deploy-timestamp: 2025-08-19T05:30:00Z
+Railway should auto-deploy when this file changes.
+This file forces Railway to rebuild and deploy the latest changes.
