@@ -292,7 +292,7 @@
             </div>
 
             <!-- Register Form -->
-            <div id="registerForm" class="auth-form" style="display: none;">
+            <div id="registerForm" class="auth-form">
                 <h2 style="margin-bottom: 20px;">Create Account</h2>
                 <p style="margin-bottom: 20px; color: #666;">Join Trade Book to start managing your portfolio</p>
                 
@@ -436,7 +436,18 @@
             
             // Check if user is already logged in
             checkAuthStatus();
+            
+            // Show register tab by default for new users
+            showRegisterTab();
         });
+
+        function showRegisterTab() {
+            // Show register tab by default
+            document.querySelectorAll('#authSection .tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('#authSection .tab:last-child').classList.add('active');
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+        }
 
         function switchAuthTab(tab) {
             // Remove active class from all tabs

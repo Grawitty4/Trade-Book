@@ -279,7 +279,7 @@
             </div>
 
             <!-- Register Form -->
-            <div id="registerForm" class="auth-form" style="display: none;">
+            <div id="registerForm" class="auth-form">
                 <h2>Create Account</h2>
                 <p style="margin-bottom: 20px;">Join Trade Book to start managing your portfolio</p>
                 
@@ -462,6 +462,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkAuthStatus();
             setTodayDate();
+            // Show register tab by default for new users
+            showRegisterTab();
         });
 
         function setTodayDate() {
@@ -483,6 +485,14 @@
             } catch (error) {
                 console.log('Not authenticated');
             }
+        }
+
+        function showRegisterTab() {
+            // Show register tab by default
+            document.querySelectorAll('#authSection .tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('#authSection .tab:last-child').classList.add('active');
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
         }
 
         function switchAuthTab(tab) {
