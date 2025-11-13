@@ -1,7 +1,7 @@
 [build]
-  # Static build - no dependencies needed
+  # Static build using Node script to prepare assets and runtime env config
   publish = "."
-  command = "cp public/index.html . && cp _redirects . && echo 'Static build completed'"
+  command = "node build-netlify.js"
 
 [[redirects]]
   # Handle client-side routing

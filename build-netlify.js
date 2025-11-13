@@ -55,6 +55,18 @@ Sitemap: https://your-netlify-site.netlify.app/sitemap.xml`;
     
     await fs.writeFile('robots.txt', robots);
     console.log('✅ Created robots.txt');
+
+    // Create env.js with runtime configuration for frontend
+    const backendUrl = (process.env.RAILWAY_BACKEND_URL || '').trim();
+    const sanitizedBackendUrl = backendUrl.replace(/\\/g, '\\\\').replace(/'/g, '\\\'');
+    const envJs = [
+      'window.__ENV__ = window.__ENV__ || {};',
+      `window.__ENV__.RAILWAY_BACKEND_URL = '${sanitizedBackendUrl || '##RAILWAY_BACKEND_URL##'}';`,
+      ''
+    ].join('\n');
+
+    await fs.writeFile('env.js', envJs);
+    console.log('✅ Created env.js with backend configuration');
     
     console.log('🎉 Netlify build completed successfully!');
     console.log('');

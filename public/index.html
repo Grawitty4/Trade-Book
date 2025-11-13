@@ -267,6 +267,7 @@
     </style>
 </head>
 <body>
+    <script src="/env.js"></script>
     <div class="container">
         <div class="header">
             <h1>📈 Trade Book</h1>
@@ -430,7 +431,10 @@
     </div>
 
     <script>
-        const BASE_URL = window.location.origin;
+        const rawBackendUrl = window.__ENV__?.RAILWAY_BACKEND_URL;
+        const BASE_URL = rawBackendUrl && rawBackendUrl.trim() && rawBackendUrl !== '##RAILWAY_BACKEND_URL##'
+            ? rawBackendUrl.replace(/\/+$/, '')
+            : window.location.origin.replace(/\/+$/, '');
         let currentUser = null;
 
         // Set today's date as default
