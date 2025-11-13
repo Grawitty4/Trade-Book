@@ -10,6 +10,39 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const rawAllowedOrigins = process.env.ALLOWED_ORIGINS || '';
+const allowedOrigins = rawAllowedOrigins
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(origin => origin.length > 0);
+
+app.use((req, res, next) => {
+    const requestOrigin = req.headers.origin;
+    const hasAllowList = allowedOrigins.length > 0;
+    const isAllowedOrigin = hasAllowList && requestOrigin && allowedOrigins.includes(requestOrigin);
+
+    if (!hasAllowList && requestOrigin) {
+        res.header('Access-Control-Allow-Origin', requestOrigin);
+    } else if (isAllowedOrigin) {
+        res.header('Access-Control-Allow-Origin', requestOrigin);
+    } else if (!hasAllowList) {
+        res.header('Access-Control-Allow-Origin', '*');
+    }
+
+    if (requestOrigin && (!hasAllowList || isAllowedOrigin)) {
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
+
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+
+    next();
+});
+
 // Middleware
 app.use(express.json());
 app.use(express.static(__dirname));
