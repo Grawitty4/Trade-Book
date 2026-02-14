@@ -19,29 +19,28 @@ const allowedOrigins = rawAllowedOrigins
     .map(origin => origin.trim())
     .filter(origin => origin.length > 0);
 
-app.use((req, res, next) => {
+// CORS: reflect request origin so Netlify/any frontend works. Do not send
+// Access-Control-Allow-Credentials (we use JWT in header, not cookies) so
+// preflight never hits the "*" + credentials rejection.
+function corsMiddleware(req, res, next) {
     const requestOrigin = req.headers.origin;
     const hasAllowList = allowedOrigins.length > 0;
     const isAllowedOrigin = hasAllowList && requestOrigin && allowedOrigins.includes(requestOrigin);
-    // Use request origin when present so Netlify/any frontend works; otherwise fall back to *.
-    const allowOrigin = requestOrigin
-        ? (isAllowedOrigin || !hasAllowList ? requestOrigin : requestOrigin)
+    const allowOrigin = requestOrigin && (isAllowedOrigin || !hasAllowList)
+        ? requestOrigin
         : '*';
-    res.header('Access-Control-Allow-Origin', allowOrigin);
-    // Browsers reject preflight when Allow-Origin is '*' and Allow-Credentials is true.
-    // Only set credentials when we're returning a specific origin.
-    if (allowOrigin !== '*') {
-        res.header('Access-Control-Allow-Credentials', 'true');
-    }
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.setHeader('Access-Control-Max-Age', '86400');
 
     if (req.method === 'OPTIONS') {
-        return res.sendStatus(204);
+        return res.status(200).end();
     }
 
     next();
-});
+}
+app.use(corsMiddleware);
 
 // Middleware
 app.use(express.json());
