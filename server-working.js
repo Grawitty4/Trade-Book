@@ -23,13 +23,16 @@ app.use((req, res, next) => {
     const requestOrigin = req.headers.origin;
     const hasAllowList = allowedOrigins.length > 0;
     const isAllowedOrigin = hasAllowList && requestOrigin && allowedOrigins.includes(requestOrigin);
-    // When no allow list, or when origin is in list: allow. Otherwise still allow request origin
-    // so that Netlify (or any frontend) can call the API without configuring ALLOWED_ORIGINS.
+    // Use request origin when present so Netlify/any frontend works; otherwise fall back to *.
     const allowOrigin = requestOrigin
         ? (isAllowedOrigin || !hasAllowList ? requestOrigin : requestOrigin)
         : '*';
     res.header('Access-Control-Allow-Origin', allowOrigin);
-    res.header('Access-Control-Allow-Credentials', 'true');
+    // Browsers reject preflight when Allow-Origin is '*' and Allow-Credentials is true.
+    // Only set credentials when we're returning a specific origin.
+    if (allowOrigin !== '*') {
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
     res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 
