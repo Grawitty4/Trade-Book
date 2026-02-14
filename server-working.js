@@ -42,8 +42,9 @@ function corsMiddleware(req, res, next) {
 }
 app.use(corsMiddleware);
 
-// Middleware
+// Middleware: parse JSON and text/plain (text/plain avoids CORS preflight from frontend)
 app.use(express.json());
+app.use(express.text({ type: 'text/plain' }));
 app.use(express.static(__dirname));
 
 // Simple user storage (fallback to memory if DB fails)
@@ -194,7 +195,12 @@ app.get('/railway-health', (req, res) => {
 // Login endpoint - requires password
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { identifier, password } = req.body;
+        let body = req.body;
+        if (typeof body === 'string') {
+            try { body = JSON.parse(body); } catch (e) { return res.status(400).json({ error: 'Invalid JSON body' }); }
+        }
+        body = body || {};
+        const { identifier, password } = body;
         
         if (!identifier || !password) {
             return res.status(400).json({ error: 'Username/email and password are required' });
@@ -271,7 +277,12 @@ app.post('/api/auth/login', async (req, res) => {
 // Register endpoint (for compatibility)
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { username, email, password, fullName } = req.body;
+        let body = req.body;
+        if (typeof body === 'string') {
+            try { body = JSON.parse(body); } catch (e) { return res.status(400).json({ error: 'Invalid JSON body' }); }
+        }
+        body = body || {};
+        const { username, email, password, fullName } = body;
         
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password required' });

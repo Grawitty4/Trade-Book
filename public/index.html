@@ -551,9 +551,10 @@
             }
 
             try {
+                // Use text/plain to avoid CORS preflight (OPTIONS) which Railway proxy may answer with 204 without CORS headers
                 const response = await fetch(`${BASE_URL}/api/auth/login`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({ identifier, password })
                 });
 
@@ -579,9 +580,10 @@
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                const msg = (error && error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')))
-                    ? 'Cannot reach server. Set RAILWAY_BACKEND_URL in Netlify to your Railway URL and ensure CORS allows this origin (or leave ALLOWED_ORIGINS empty on Railway).'
-                    : 'Network error. Please try again.';
+                const m = error && error.message ? String(error.message) : '';
+                const msg = (m.includes('Failed to fetch') || m.includes('NetworkError') || m.includes('Load failed'))
+                    ? 'Cannot reach server (often CORS/preflight). If this continues, check RAILWAY_BACKEND_URL and ALLOWED_ORIGINS.'
+                    : (m || 'Network error. Please try again.');
                 showLoginStatus(msg, 'error');
             }
         }
@@ -598,9 +600,10 @@
             }
 
             try {
+                // Use text/plain to avoid CORS preflight (OPTIONS) which Railway proxy may answer with 204 without CORS headers
                 const response = await fetch(`${BASE_URL}/api/auth/register`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({ username, email, fullName, password })
                 });
 
@@ -626,9 +629,10 @@
                 }
             } catch (error) {
                 console.error('Registration error:', error);
-                const msg = (error && error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')))
-                    ? 'Cannot reach server. Set RAILWAY_BACKEND_URL in Netlify to your Railway URL and ensure CORS allows this origin (or leave ALLOWED_ORIGINS empty on Railway).'
-                    : 'Network error. Please try again.';
+                const m = error && error.message ? String(error.message) : '';
+                const msg = (m.includes('Failed to fetch') || m.includes('NetworkError') || m.includes('Load failed'))
+                    ? 'Cannot reach server (often CORS/preflight). If this continues, check RAILWAY_BACKEND_URL and ALLOWED_ORIGINS.'
+                    : (m || 'Network error. Please try again.');
                 showRegisterStatus(msg, 'error');
             }
         }
