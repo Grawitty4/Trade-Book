@@ -468,21 +468,65 @@
             color: #495057;
             white-space: nowrap;
         }
-        .executed-filter-select {
-            min-width: 160px;
-            height: 100px;
-            padding: 6px 8px;
+        .executed-filter-dropdown {
+            position: relative;
+            min-width: 140px;
+        }
+        .executed-filter-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 8px 28px 8px 12px;
             font-size: 14px;
             border: 1px solid #dee2e6;
             border-radius: 6px;
             background: #fff;
+            color: #495057;
+            cursor: pointer;
+            text-align: left;
         }
-        .executed-filter-select option {
-            padding: 4px 0;
+        .executed-filter-trigger::after {
+            content: '';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            margin-top: -3px;
+            border: 5px solid transparent;
+            border-top-color: #495057;
         }
-        .executed-filter-select option:checked {
-            background: #667eea;
-            color: #fff;
+        .executed-filter-dropdown.open .executed-filter-trigger {
+            border-color: #667eea;
+        }
+        .executed-filter-panel {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            min-width: 100%;
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .executed-filter-dropdown.open .executed-filter-panel {
+            display: block;
+        }
+        .executed-filter-option {
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .executed-filter-option:hover {
+            background: #f8f9fa;
+        }
+        .executed-filter-option.selected {
+            background: #e8ebf7;
+            color: #667eea;
         }
 
         @keyframes fadeIn {
@@ -701,13 +745,17 @@
                     <div class="executed-filters">
                         <div class="executed-filter-group">
                             <span class="executed-filter-label">Month:</span>
-                            <select id="executedMonthFilters" class="executed-filter-select" multiple title="Ctrl+click (Cmd+click on Mac) to select multiple; no selection = show all">
-                            </select>
+                            <div id="executedMonthDropdown" class="executed-filter-dropdown">
+                                <button type="button" class="executed-filter-trigger" aria-haspopup="listbox" aria-expanded="false">Month</button>
+                                <div class="executed-filter-panel" role="listbox"></div>
+                            </div>
                         </div>
                         <div class="executed-filter-group">
                             <span class="executed-filter-label">Type:</span>
-                            <select id="executedTypeFilters" class="executed-filter-select" multiple title="Ctrl+click (Cmd+click on Mac) to select multiple; no selection = show all">
-                            </select>
+                            <div id="executedTypeDropdown" class="executed-filter-dropdown">
+                                <button type="button" class="executed-filter-trigger" aria-haspopup="listbox" aria-expanded="false">Type</button>
+                                <div class="executed-filter-panel" role="listbox"></div>
+                            </div>
                         </div>
                     </div>
                     <div id="executedTradesContainer"><p>Loading…</p></div>
@@ -966,6 +1014,9 @@
             return '';
         }
 
+        var executedSelectedMonths = [];
+        var executedSelectedTypes = [];
+
         function renderExecutedTradesFilters() {
             var trades = portfolioTradesCache || [];
             var monthSet = {};
@@ -979,38 +1030,85 @@
             var months = Object.keys(monthSet).sort().reverse();
             var types = Object.keys(typeSet).sort();
 
-            var monthEl = document.getElementById('executedMonthFilters');
-            var typeEl = document.getElementById('executedTypeFilters');
-            monthEl.innerHTML = '<option value="">All months</option>' + months.map(function(m) {
-                var label = formatMonthDisplay({ trade_month: m });
-                return '<option value="' + m + '">' + (label.replace(/</g, '&lt;')) + '</option>';
-            }).join('');
-            typeEl.innerHTML = '<option value="">All types</option>' + types.map(function(ty) {
-                return '<option value="' + (ty.replace(/"/g, '&quot;').replace(/</g, '&lt;')) + '">' + (ty.replace(/</g, '&lt;')) + '</option>';
-            }).join('');
-            monthEl.onchange = applyExecutedTradesFilter;
-            typeEl.onchange = applyExecutedTradesFilter;
+            var monthDropdown = document.getElementById('executedMonthDropdown');
+            var typeDropdown = document.getElementById('executedTypeDropdown');
+            var monthTrigger = monthDropdown && monthDropdown.querySelector('.executed-filter-trigger');
+            var monthPanel = monthDropdown && monthDropdown.querySelector('.executed-filter-panel');
+            var typeTrigger = typeDropdown && typeDropdown.querySelector('.executed-filter-trigger');
+            var typePanel = typeDropdown && typeDropdown.querySelector('.executed-filter-panel');
+
+            function updateTriggerText(trigger, selected, defaultLabel, formatOne) {
+                if (selected.length === 0) trigger.textContent = defaultLabel;
+                else if (selected.length === 1) trigger.textContent = formatOne ? formatOne(selected[0]) : selected[0];
+                else trigger.textContent = defaultLabel + ' (' + selected.length + ')';
+            }
+
+            if (monthPanel) {
+                monthPanel.innerHTML = months.map(function(m) {
+                    var label = formatMonthDisplay({ trade_month: m });
+                    var sel = executedSelectedMonths.indexOf(m) !== -1 ? ' selected' : '';
+                    return '<div class="executed-filter-option' + sel + '" data-value="' + m.replace(/"/g, '&quot;') + '" role="option">' + (label.replace(/</g, '&lt;')) + '</div>';
+                }).join('');
+                monthPanel.querySelectorAll('.executed-filter-option').forEach(function(opt) {
+                    opt.onclick = function() {
+                        var v = opt.getAttribute('data-value');
+                        var i = executedSelectedMonths.indexOf(v);
+                        if (i === -1) executedSelectedMonths.push(v);
+                        else executedSelectedMonths.splice(i, 1);
+                        opt.classList.toggle('selected', executedSelectedMonths.indexOf(v) !== -1);
+                        updateTriggerText(monthTrigger, executedSelectedMonths, 'Month', function(m) { return formatMonthDisplay({ trade_month: m }); });
+                        applyExecutedTradesFilter();
+                    };
+                });
+                updateTriggerText(monthTrigger, executedSelectedMonths, 'Month', function(m) { return formatMonthDisplay({ trade_month: m }); });
+            }
+            if (typePanel) {
+                typePanel.innerHTML = types.map(function(ty) {
+                    var esc = (ty || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                    var sel = executedSelectedTypes.indexOf(ty) !== -1 ? ' selected' : '';
+                    return '<div class="executed-filter-option' + sel + '" data-value="' + esc + '" role="option">' + (ty.replace(/</g, '&lt;')) + '</div>';
+                }).join('');
+                typePanel.querySelectorAll('.executed-filter-option').forEach(function(opt, idx) {
+                    var ty = types[idx];
+                    opt.onclick = function() {
+                        var i = executedSelectedTypes.indexOf(ty);
+                        if (i === -1) executedSelectedTypes.push(ty);
+                        else executedSelectedTypes.splice(i, 1);
+                        opt.classList.toggle('selected', executedSelectedTypes.indexOf(ty) !== -1);
+                        updateTriggerText(typeTrigger, executedSelectedTypes, 'Type', function(t) { return t; });
+                        applyExecutedTradesFilter();
+                    };
+                });
+                updateTriggerText(typeTrigger, executedSelectedTypes, 'Type', function(t) { return t; });
+            }
+
+            monthTrigger && (monthTrigger.onclick = function(e) {
+                e.stopPropagation();
+                monthDropdown.classList.toggle('open');
+                typeDropdown && typeDropdown.classList.remove('open');
+            });
+            typeTrigger && (typeTrigger.onclick = function(e) {
+                e.stopPropagation();
+                typeDropdown.classList.toggle('open');
+                monthDropdown && monthDropdown.classList.remove('open');
+            });
+            if (!window._executedDropdownCloseBound) {
+                window._executedDropdownCloseBound = true;
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.executed-filter-dropdown')) {
+                        var m = document.getElementById('executedMonthDropdown');
+                        var t = document.getElementById('executedTypeDropdown');
+                        if (m) m.classList.remove('open');
+                        if (t) t.classList.remove('open');
+                    }
+                });
+            }
         }
 
         function getExecutedFiltered() {
             var trades = portfolioTradesCache || [];
-            var monthEl = document.getElementById('executedMonthFilters');
-            var typeEl = document.getElementById('executedTypeFilters');
-            var selectedMonths = [];
-            var i, opt;
-            if (monthEl) {
-                for (i = 0; i < monthEl.options.length; i++) {
-                    opt = monthEl.options[i];
-                    if (opt.selected && opt.value) selectedMonths.push(opt.value);
-                }
-            }
-            var selectedTypes = [];
-            if (typeEl) {
-                for (i = 0; i < typeEl.options.length; i++) {
-                    opt = typeEl.options[i];
-                    if (opt.selected && opt.value) selectedTypes.push(opt.value);
-                }
-            }
+            var selectedMonths = executedSelectedMonths.slice();
+            var selectedTypes = executedSelectedTypes.slice();
             var filterByMonth = selectedMonths.length > 0;
             var filterByType = selectedTypes.length > 0;
             if (!filterByMonth && !filterByType) return trades;
