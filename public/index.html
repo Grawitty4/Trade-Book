@@ -460,7 +460,7 @@
         }
         .executed-filter-group {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             gap: 8px;
         }
         .executed-filter-label {
@@ -468,23 +468,21 @@
             color: #495057;
             white-space: nowrap;
         }
-        .executed-filter-checkboxes {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 14px;
-            align-items: center;
+        .executed-filter-select {
+            min-width: 160px;
+            height: 100px;
+            padding: 6px 8px;
+            font-size: 14px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background: #fff;
         }
-        .executed-filter-checkboxes label {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: normal;
-            cursor: pointer;
-            white-space: nowrap;
+        .executed-filter-select option {
+            padding: 4px 0;
         }
-        .executed-filter-checkboxes input[type="checkbox"] {
-            margin: 0;
-            cursor: pointer;
+        .executed-filter-select option:checked {
+            background: #667eea;
+            color: #fff;
         }
 
         @keyframes fadeIn {
@@ -703,11 +701,13 @@
                     <div class="executed-filters">
                         <div class="executed-filter-group">
                             <span class="executed-filter-label">Month:</span>
-                            <div id="executedMonthFilters" class="executed-filter-checkboxes"></div>
+                            <select id="executedMonthFilters" class="executed-filter-select" multiple title="Ctrl+click (Cmd+click on Mac) to select multiple; no selection = show all">
+                            </select>
                         </div>
                         <div class="executed-filter-group">
                             <span class="executed-filter-label">Type:</span>
-                            <div id="executedTypeFilters" class="executed-filter-checkboxes"></div>
+                            <select id="executedTypeFilters" class="executed-filter-select" multiple title="Ctrl+click (Cmd+click on Mac) to select multiple; no selection = show all">
+                            </select>
                         </div>
                     </div>
                     <div id="executedTradesContainer"><p>Loading…</p></div>
@@ -981,21 +981,36 @@
 
             var monthEl = document.getElementById('executedMonthFilters');
             var typeEl = document.getElementById('executedTypeFilters');
-            monthEl.innerHTML = months.map(function(m) {
+            monthEl.innerHTML = '<option value="">All months</option>' + months.map(function(m) {
                 var label = formatMonthDisplay({ trade_month: m });
-                return '<label><input type="checkbox" class="executed-filter-month" value="' + m + '" onchange="applyExecutedTradesFilter()"> ' + label + '</label>';
+                return '<option value="' + m + '">' + (label.replace(/</g, '&lt;')) + '</option>';
             }).join('');
-            typeEl.innerHTML = types.map(function(ty) {
-                return '<label><input type="checkbox" class="executed-filter-type" value="' + (ty.replace(/"/g, '&quot;')) + '" onchange="applyExecutedTradesFilter()"> ' + (ty.replace(/</g, '&lt;')) + '</label>';
+            typeEl.innerHTML = '<option value="">All types</option>' + types.map(function(ty) {
+                return '<option value="' + (ty.replace(/"/g, '&quot;').replace(/</g, '&lt;')) + '">' + (ty.replace(/</g, '&lt;')) + '</option>';
             }).join('');
+            monthEl.onchange = applyExecutedTradesFilter;
+            typeEl.onchange = applyExecutedTradesFilter;
         }
 
         function getExecutedFiltered() {
             var trades = portfolioTradesCache || [];
+            var monthEl = document.getElementById('executedMonthFilters');
+            var typeEl = document.getElementById('executedTypeFilters');
             var selectedMonths = [];
-            document.querySelectorAll('.executed-filter-month:checked').forEach(function(cb) { selectedMonths.push(cb.value); });
+            var i, opt;
+            if (monthEl) {
+                for (i = 0; i < monthEl.options.length; i++) {
+                    opt = monthEl.options[i];
+                    if (opt.selected && opt.value) selectedMonths.push(opt.value);
+                }
+            }
             var selectedTypes = [];
-            document.querySelectorAll('.executed-filter-type:checked').forEach(function(cb) { selectedTypes.push(cb.value); });
+            if (typeEl) {
+                for (i = 0; i < typeEl.options.length; i++) {
+                    opt = typeEl.options[i];
+                    if (opt.selected && opt.value) selectedTypes.push(opt.value);
+                }
+            }
             var filterByMonth = selectedMonths.length > 0;
             var filterByType = selectedTypes.length > 0;
             if (!filterByMonth && !filterByType) return trades;
