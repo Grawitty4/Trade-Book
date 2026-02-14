@@ -352,21 +352,57 @@
         .trade-form-row .trade-f-action,
         .trade-form-row .trade-f-type,
         .trade-form-row .trade-f-qty,
-        .trade-form-row .trade-f-price {
+        .trade-form-row .trade-f-price,
+        .trade-form-row .trade-f-expiry,
+        .trade-form-row .trade-f-strike {
             flex: 1 1 0;
             min-width: 64px;
         }
-        .trade-form-row .trade-f-reason {
-            flex: 1.5 1 0;
-            min-width: 80px;
-        }
 
-        .trade-form-row .btn {
-            flex: 0 0 auto;
-            padding: 6px 12px;
+        .trade-form-wrap {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+        .trade-form-fields {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .trade-form-reason-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        .trade-form-reason-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .trade-form-reason-row .form-group input {
             height: 30px;
+            padding: 4px 8px;
+            font-size: 13px;
+            box-sizing: border-box;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+        }
+        .trade-form-wrap .btn-add-trade {
+            flex: 0 0 auto;
+            padding: 8px 16px;
             font-size: 13px;
             width: auto;
+            min-height: 68px;
+            align-self: stretch;
+        }
+        .trade-form-row .form-group.conditional-field {
+            display: none;
+        }
+        .trade-form-row .form-group.conditional-field.visible {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 0;
+            min-width: 64px;
         }
 
         table {
@@ -510,55 +546,69 @@
                 
                 <div class="form-section">
                     <h3>Add New Trade</h3>
-                    <div class="form-row trade-form-row">
-                        <div class="form-group trade-f-date">
-                            <label>Date</label>
-                            <input type="date" id="tradeDate" required>
+                    <div class="trade-form-wrap">
+                        <div class="trade-form-fields">
+                            <div class="form-row trade-form-row">
+                                <div class="form-group trade-f-date">
+                                    <label>Date</label>
+                                    <input type="date" id="tradeDate" required>
+                                </div>
+                                <div class="form-group trade-f-symbol">
+                                    <label>Symbol</label>
+                                    <input type="text" id="tradeSymbol" placeholder="RELIANCE, TCS" required>
+                                </div>
+                                <div class="form-group trade-f-index">
+                                    <label>Index</label>
+                                    <select id="tradeIndex">
+                                        <option value="">—</option>
+                                        <option value="MCX">MCX</option>
+                                        <option value="NSE">NSE</option>
+                                        <option value="BSE">BSE</option>
+                                    </select>
+                                </div>
+                                <div class="form-group trade-f-action">
+                                    <label>Action</label>
+                                    <select id="tradeAction" required>
+                                        <option value="">—</option>
+                                        <option value="buy">Buy</option>
+                                        <option value="sell">Sell</option>
+                                    </select>
+                                </div>
+                                <div class="form-group trade-f-type">
+                                    <label>Type</label>
+                                    <select id="tradeType">
+                                        <option value="">—</option>
+                                        <option value="Cash">Cash</option>
+                                        <option value="Futures">Futures</option>
+                                        <option value="CE">CE</option>
+                                        <option value="PE">PE</option>
+                                    </select>
+                                </div>
+                                <div class="form-group trade-f-expiry conditional-field" id="wrapExpiry">
+                                    <label>Expiry</label>
+                                    <input type="date" id="tradeExpiry">
+                                </div>
+                                <div class="form-group trade-f-strike conditional-field" id="wrapStrike">
+                                    <label>Strike (₹)</label>
+                                    <input type="number" id="tradeStrike" step="0.01" placeholder="0">
+                                </div>
+                                <div class="form-group trade-f-qty">
+                                    <label>Qty</label>
+                                    <input type="number" id="tradeQuantity" placeholder="100" required>
+                                </div>
+                                <div class="form-group trade-f-price">
+                                    <label>Price (₹)</label>
+                                    <input type="number" id="tradePrice" step="0.01" placeholder="1500" required>
+                                </div>
+                            </div>
+                            <div class="trade-form-reason-row">
+                                <div class="form-group" style="flex:1;">
+                                    <label>Reason</label>
+                                    <input type="text" id="tradeReason" placeholder="Reason for trade">
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group trade-f-symbol">
-                            <label>Symbol</label>
-                            <input type="text" id="tradeSymbol" placeholder="RELIANCE, TCS" required>
-                        </div>
-                        <div class="form-group trade-f-index">
-                            <label>Index</label>
-                            <select id="tradeIndex">
-                                <option value="">—</option>
-                                <option value="MCX">MCX</option>
-                                <option value="NSE">NSE</option>
-                                <option value="BSE">BSE</option>
-                            </select>
-                        </div>
-                        <div class="form-group trade-f-action">
-                            <label>Action</label>
-                            <select id="tradeAction" required>
-                                <option value="">—</option>
-                                <option value="buy">Buy</option>
-                                <option value="sell">Sell</option>
-                            </select>
-                        </div>
-                        <div class="form-group trade-f-type">
-                            <label>Type</label>
-                            <select id="tradeType">
-                                <option value="">—</option>
-                                <option value="Cash">Cash</option>
-                                <option value="Futures">Futures</option>
-                                <option value="CE">CE</option>
-                                <option value="PE">PE</option>
-                            </select>
-                        </div>
-                        <div class="form-group trade-f-qty">
-                            <label>Qty</label>
-                            <input type="number" id="tradeQuantity" placeholder="100" required>
-                        </div>
-                        <div class="form-group trade-f-price">
-                            <label>Price (₹)</label>
-                            <input type="number" id="tradePrice" step="0.01" placeholder="1500" required>
-                        </div>
-                        <div class="form-group trade-f-reason">
-                            <label>Reason</label>
-                            <input type="text" id="tradeReason" placeholder="Reason">
-                        </div>
-                        <button type="button" onclick="addTrade()" class="btn">Add Trade</button>
+                        <button type="button" onclick="addTrade()" class="btn btn-add-trade">Add Trade</button>
                     </div>
                     <div id="tradeStatus"></div>
                 </div>
@@ -682,6 +732,11 @@
             const today = new Date().toISOString().split('T')[0];
             if (document.getElementById('tradeDate')) {
                 document.getElementById('tradeDate').value = today;
+            }
+            var typeSelect = document.getElementById('tradeType');
+            if (typeSelect) {
+                typeSelect.addEventListener('change', toggleTradeTypeFields);
+                toggleTradeTypeFields();
             }
 
             if (!isBackendConfigured) {
@@ -956,6 +1011,18 @@
             showAuthSection();
         }
 
+        function toggleTradeTypeFields() {
+            var typeVal = (document.getElementById('tradeType') || {}).value || '';
+            var wrapExpiry = document.getElementById('wrapExpiry');
+            var wrapStrike = document.getElementById('wrapStrike');
+            if (wrapExpiry) {
+                wrapExpiry.classList.toggle('visible', typeVal && typeVal !== 'Cash');
+            }
+            if (wrapStrike) {
+                wrapStrike.classList.toggle('visible', typeVal === 'CE' || typeVal === 'PE');
+            }
+        }
+
         async function addTrade() {
             const date = document.getElementById('tradeDate').value;
             const symbol = document.getElementById('tradeSymbol').value.trim().toUpperCase();
@@ -965,6 +1032,8 @@
             const quantity = parseInt(document.getElementById('tradeQuantity').value, 10);
             const price = parseFloat(document.getElementById('tradePrice').value);
             const reason = document.getElementById('tradeReason').value.trim() || null;
+            const expiry = (document.getElementById('tradeExpiry') || {}).value || null;
+            const strike_price = document.getElementById('tradeStrike') && document.getElementById('tradeStrike').value !== '' ? parseFloat(document.getElementById('tradeStrike').value) : null;
             
             if (!symbol || !trade_action || !quantity || !price || !date) {
                 showTradeStatus('Please fill in Date, Symbol, Trade action, Quantity and Price', 'error');
@@ -975,7 +1044,7 @@
                 const response = await fetch(`${BASE_URL}/api/trades`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
-                    body: JSON.stringify({ date, symbol, market_index, trade_action, trade_type, quantity, price, reason })
+                    body: JSON.stringify({ date, symbol, market_index, trade_action, trade_type, quantity, price, reason, expiry, strike_price })
                 });
 
                 const result = await response.json();
@@ -987,9 +1056,12 @@
                     document.getElementById('tradeIndex').value = '';
                     document.getElementById('tradeAction').value = '';
                     document.getElementById('tradeType').value = '';
+                    document.getElementById('tradeExpiry').value = '';
+                    document.getElementById('tradeStrike').value = '';
                     document.getElementById('tradeQuantity').value = '';
                     document.getElementById('tradePrice').value = '';
                     document.getElementById('tradeReason').value = '';
+                    toggleTradeTypeFields();
                     loadTrades();
                 } else {
                     showTradeStatus(result.error || 'Failed to add trade', 'error');
@@ -1035,17 +1107,27 @@
                 return;
             }
 
+            function tradeMonth(dateStr) {
+                if (!dateStr) return '—';
+                try {
+                    var d = new Date(dateStr);
+                    return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                } catch (e) { return '—'; }
+            }
             const html = `
                 <table>
                     <thead>
                         <tr>
                             <th>Date</th>
+                            <th>Month</th>
                             <th>Symbol</th>
                             <th>Index</th>
-                            <th>Trade action</th>
-                            <th>Trade type</th>
-                            <th>Quantity</th>
+                            <th>Action</th>
+                            <th>Type</th>
+                            <th>Qty</th>
                             <th>Price (₹)</th>
+                            <th>Strike (₹)</th>
+                            <th>Expiry</th>
                             <th>Value (₹)</th>
                             <th>Reason</th>
                         </tr>
@@ -1056,12 +1138,15 @@
                             return `
                             <tr>
                                 <td>${trade.date || 'N/A'}</td>
+                                <td>${tradeMonth(trade.date)}</td>
                                 <td>${trade.symbol || 'N/A'}</td>
                                 <td>${trade.market_index || '—'}</td>
                                 <td style="color: ${action.toUpperCase() === 'BUY' ? 'green' : 'red'}">${action.toUpperCase() || '—'}</td>
                                 <td>${trade.trade_type || '—'}</td>
                                 <td>${trade.quantity || 0}</td>
-                                <td>₹${trade.price || 0}</td>
+                                <td>₹${trade.price != null ? trade.price : '—'}</td>
+                                <td>${trade.strike_price != null ? '₹' + trade.strike_price : '—'}</td>
+                                <td>${trade.expiry || '—'}</td>
                                 <td>₹${((trade.quantity || 0) * (trade.price || 0)).toFixed(2)}</td>
                                 <td>${(trade.reason || '—').toString().substring(0, 40)}${(trade.reason || '').length > 40 ? '…' : ''}</td>
                             </tr>

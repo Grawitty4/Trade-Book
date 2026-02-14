@@ -109,6 +109,12 @@ async function initDatabase() {
         await client.query(`
             ALTER TABLE cursor_trade_book.trades ADD COLUMN IF NOT EXISTS reason TEXT;
         `);
+        await client.query(`
+            ALTER TABLE cursor_trade_book.trades ADD COLUMN IF NOT EXISTS expiry DATE;
+        `);
+        await client.query(`
+            ALTER TABLE cursor_trade_book.trades ADD COLUMN IF NOT EXISTS strike_price DECIMAL(10,2);
+        `);
         
         client.release();
         dbAvailable = true;
@@ -431,7 +437,7 @@ app.get('/api/trades', requireAuth, async (req, res) => {
         if (dbAvailable && pool) {
             try {
                 const result = await pool.query(
-                    'SELECT id, symbol, type, quantity, price, date, created_at, market_index, trade_type, reason FROM cursor_trade_book.trades WHERE user_id = $1 ORDER BY date DESC, created_at DESC',
+                    'SELECT id, symbol, type, quantity, price, date, created_at, market_index, trade_type, reason, expiry, strike_price FROM cursor_trade_book.trades WHERE user_id = $1 ORDER BY date DESC, created_at DESC',
                     [req.user.id]
                 );
                 trades = result.rows.map(r => ({
@@ -439,7 +445,9 @@ app.get('/api/trades', requireAuth, async (req, res) => {
                     trade_action: r.type,
                     market_index: r.market_index || null,
                     trade_type: r.trade_type || null,
-                    reason: r.reason || null
+                    reason: r.reason || null,
+                    expiry: r.expiry || null,
+                    strike_price: r.strike_price != null ? r.strike_price : null
                 }));
             } catch (dbError) {
                 console.log('Database error getting trades, using memory:', dbError.message);
@@ -454,7 +462,9 @@ app.get('/api/trades', requireAuth, async (req, res) => {
                 trade_action: t.type,
                 market_index: t.market_index || null,
                 trade_type: t.trade_type || null,
-                reason: t.reason || null
+                reason: t.reason || null,
+                expiry: t.expiry || null,
+                strike_price: t.strike_price != null ? t.strike_price : null
             }));
         }
 
@@ -476,6 +486,8 @@ app.get('/api/trades', requireAuth, async (req, res) => {
 app.post('/api/trades', requireAuth, async (req, res) => {
     try {
         const tradeAction = (req.body.trade_action || req.body.type || '').toLowerCase();
+        const expiryVal = (req.body.expiry || '').trim() || null;
+        const strikePriceVal = req.body.strike_price != null && req.body.strike_price !== '' ? parseFloat(req.body.strike_price) : null;
         const trade = {
             id: Date.now(),
             userId: req.user.id,
@@ -487,14 +499,16 @@ app.post('/api/trades', requireAuth, async (req, res) => {
             market_index: (req.body.market_index || '').trim() || null,
             trade_type: (req.body.trade_type || '').trim() || null,
             reason: (req.body.reason || '').trim() || null,
+            expiry: expiryVal,
+            strike_price: strikePriceVal,
             created_at: new Date().toISOString()
         };
 
         if (dbAvailable && pool) {
             try {
                 const result = await pool.query(
-                    'INSERT INTO cursor_trade_book.trades (user_id, symbol, type, quantity, price, date, market_index, trade_type, reason) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, symbol, type, quantity, price, date, created_at, market_index, trade_type, reason',
-                    [req.user.id, trade.symbol, trade.type, trade.quantity, trade.price, trade.date, trade.market_index, trade.trade_type, trade.reason]
+                    'INSERT INTO cursor_trade_book.trades (user_id, symbol, type, quantity, price, date, market_index, trade_type, reason, expiry, strike_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, symbol, type, quantity, price, date, created_at, market_index, trade_type, reason, expiry, strike_price',
+                    [req.user.id, trade.symbol, trade.type, trade.quantity, trade.price, trade.date, trade.market_index, trade.trade_type, trade.reason, trade.expiry, trade.strike_price]
                 );
                 const dbTrade = result.rows[0];
                 trade.id = dbTrade.id;
@@ -502,6 +516,8 @@ app.post('/api/trades', requireAuth, async (req, res) => {
                 trade.market_index = dbTrade.market_index;
                 trade.trade_type = dbTrade.trade_type;
                 trade.reason = dbTrade.reason;
+                trade.expiry = dbTrade.expiry;
+                trade.strike_price = dbTrade.strike_price;
             } catch (dbError) {
                 console.log('Database error saving trade, using memory:', dbError.message);
                 dbAvailable = false;
