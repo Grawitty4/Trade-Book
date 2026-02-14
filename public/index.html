@@ -19,9 +19,9 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 12px;
         }
 
         .header {
@@ -148,9 +148,9 @@
         .main-app {
             display: none;
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 30px;
-            margin-top: 20px;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
         }
 
         .user-info {
@@ -276,9 +276,14 @@
 
         .form-section {
             background: #f8f9fa;
-            padding: 25px;
+            padding: 12px 14px;
             border-radius: 8px;
-            margin-bottom: 25px;
+            margin-bottom: 14px;
+        }
+
+        .form-section h3 {
+            margin-bottom: 10px;
+            font-size: 1rem;
         }
 
         .form-row {
@@ -296,6 +301,53 @@
         .form-row button {
             flex-shrink: 0;
             height: 52px;
+        }
+
+        /* Single-row compact trade form */
+        .trade-form-row {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .trade-form-row .form-group {
+            margin-bottom: 0;
+            min-width: 0;
+            flex: 0 1 auto;
+        }
+
+        .trade-form-row .form-group label {
+            margin-bottom: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .trade-form-row .form-group input,
+        .trade-form-row .form-group select {
+            padding: 6px 8px;
+            font-size: 13px;
+            width: 100%;
+            min-width: 0;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+        }
+
+        .trade-form-row .trade-f-date { flex: 0 0 120px; }
+        .trade-form-row .trade-f-symbol { flex: 0 0 95px; }
+        .trade-form-row .trade-f-index { flex: 0 0 68px; }
+        .trade-form-row .trade-f-action { flex: 0 0 72px; }
+        .trade-form-row .trade-f-type { flex: 0 0 72px; }
+        .trade-form-row .trade-f-qty { flex: 0 0 62px; }
+        .trade-form-row .trade-f-price { flex: 0 0 78px; }
+        .trade-form-row .trade-f-reason { flex: 1 1 100px; min-width: 80px; }
+
+        .trade-form-row .btn {
+            flex: 0 0 auto;
+            padding: 6px 12px;
+            height: 30px;
+            font-size: 13px;
+            width: auto;
         }
 
         table {
@@ -321,6 +373,13 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @media (max-width: 1100px) {
+            .trade-form-row {
+                flex-wrap: wrap;
+            }
+            .trade-form-row .form-group.trade-f-reason { min-width: 120px; }
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -332,12 +391,18 @@
             
             .auth-section,
             .main-app {
-                padding: 20px;
+                padding: 12px;
             }
             
             .form-row {
                 flex-direction: column;
             }
+            
+            .trade-form-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .trade-form-row .form-group { flex: 1 1 auto; }
             
             .app-tabs {
                 flex-direction: column;
@@ -426,53 +491,53 @@
                 
                 <div class="form-section">
                     <h3>Add New Trade</h3>
-                    <div class="form-row">
-                        <div class="form-group">
+                    <div class="form-row trade-form-row">
+                        <div class="form-group trade-f-date">
                             <label>Date</label>
                             <input type="date" id="tradeDate" required>
                         </div>
-                        <div class="form-group">
-                            <label>Stock Symbol</label>
-                            <input type="text" id="tradeSymbol" placeholder="e.g., RELIANCE, TCS" required>
+                        <div class="form-group trade-f-symbol">
+                            <label>Symbol</label>
+                            <input type="text" id="tradeSymbol" placeholder="RELIANCE, TCS" required>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group trade-f-index">
                             <label>Index</label>
                             <select id="tradeIndex">
-                                <option value="">Select</option>
+                                <option value="">—</option>
                                 <option value="MCX">MCX</option>
                                 <option value="NSE">NSE</option>
                                 <option value="BSE">BSE</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Trade action</label>
+                        <div class="form-group trade-f-action">
+                            <label>Action</label>
                             <select id="tradeAction" required>
-                                <option value="">Select</option>
+                                <option value="">—</option>
                                 <option value="buy">Buy</option>
                                 <option value="sell">Sell</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Trade type</label>
+                        <div class="form-group trade-f-type">
+                            <label>Type</label>
                             <select id="tradeType">
-                                <option value="">Select</option>
+                                <option value="">—</option>
                                 <option value="Cash">Cash</option>
                                 <option value="Futures">Futures</option>
                                 <option value="CE">CE</option>
                                 <option value="PE">PE</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Quantity</label>
+                        <div class="form-group trade-f-qty">
+                            <label>Qty</label>
                             <input type="number" id="tradeQuantity" placeholder="100" required>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group trade-f-price">
                             <label>Price (₹)</label>
-                            <input type="number" id="tradePrice" step="0.01" placeholder="1500.00" required>
+                            <input type="number" id="tradePrice" step="0.01" placeholder="1500" required>
                         </div>
-                        <div class="form-group" style="flex: 1; min-width: 180px;">
+                        <div class="form-group trade-f-reason">
                             <label>Reason</label>
-                            <input type="text" id="tradeReason" placeholder="Reason for trade">
+                            <input type="text" id="tradeReason" placeholder="Reason">
                         </div>
                         <button type="button" onclick="addTrade()" class="btn">Add Trade</button>
                     </div>
