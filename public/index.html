@@ -487,11 +487,11 @@
             }
 
             if (!isBackendConfigured) {
-                showBackendWarning('Backend URL not set. In Netlify: set RAILWAY_BACKEND_URL to your Railway app URL (e.g. https://your-app.railway.app), then redeploy.');
+                showBackendWarning('Backend URL not set. In Netlify: Site settings → Environment variables → add RAILWAY_BACKEND_URL = https://trade-book-production.up.railway.app (no trailing slash). Then trigger a new deploy so the build picks it up.');
             } else {
                 const ok = await checkBackendReachable();
                 if (!ok) {
-                    showBackendWarning('Cannot reach backend at ' + BASE_URL + '. Check that the backend is running on Railway and that CORS allows this site (or leave ALLOWED_ORIGINS empty on Railway).');
+                    showBackendWarning('Cannot reach backend at ' + BASE_URL + '. Set RAILWAY_BACKEND_URL = https://trade-book-production.up.railway.app in Netlify and redeploy. ALLOWED_ORIGINS is no longer required.');
                 } else {
                     hideBackendWarning();
                 }
@@ -582,7 +582,7 @@
                 console.error('Login error:', error);
                 const m = error && error.message ? String(error.message) : '';
                 const msg = (m.includes('Failed to fetch') || m.includes('NetworkError') || m.includes('Load failed'))
-                    ? 'Cannot reach server (often CORS/preflight). If this continues, check RAILWAY_BACKEND_URL and ALLOWED_ORIGINS.'
+                    ? 'Cannot reach server. Set RAILWAY_BACKEND_URL = https://trade-book-production.up.railway.app in Netlify (Environment variables) and redeploy.'
                     : (m || 'Network error. Please try again.');
                 showLoginStatus(msg, 'error');
             }
@@ -631,7 +631,7 @@
                 console.error('Registration error:', error);
                 const m = error && error.message ? String(error.message) : '';
                 const msg = (m.includes('Failed to fetch') || m.includes('NetworkError') || m.includes('Load failed'))
-                    ? 'Cannot reach server (often CORS/preflight). If this continues, check RAILWAY_BACKEND_URL and ALLOWED_ORIGINS.'
+                    ? 'Cannot reach server. Set RAILWAY_BACKEND_URL = https://trade-book-production.up.railway.app in Netlify (Environment variables) and redeploy.'
                     : (m || 'Network error. Please try again.');
                 showRegisterStatus(msg, 'error');
             }

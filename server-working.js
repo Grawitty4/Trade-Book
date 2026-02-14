@@ -13,23 +13,11 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'trade-book-jwt-secret-change-in-production';
 const JWT_EXPIRES_IN = '7d';
 
-const rawAllowedOrigins = process.env.ALLOWED_ORIGINS || '';
-const allowedOrigins = rawAllowedOrigins
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(origin => origin.length > 0);
-
-// CORS: reflect request origin so Netlify/any frontend works. Do not send
-// Access-Control-Allow-Credentials (we use JWT in header, not cookies) so
-// preflight never hits the "*" + credentials rejection.
+// CORS: always reflect the request origin when present so any frontend (e.g. trade-logs.netlify.app) is allowed.
+// Do not send Access-Control-Allow-Credentials so preflight is never rejected.
 function corsMiddleware(req, res, next) {
     const requestOrigin = req.headers.origin;
-    const hasAllowList = allowedOrigins.length > 0;
-    const isAllowedOrigin = hasAllowList && requestOrigin && allowedOrigins.includes(requestOrigin);
-    const allowOrigin = requestOrigin && (isAllowedOrigin || !hasAllowList)
-        ? requestOrigin
-        : '*';
-    res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin || '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
     res.setHeader('Access-Control-Max-Age', '86400');
