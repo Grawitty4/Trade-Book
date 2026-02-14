@@ -1107,12 +1107,21 @@
                 return;
             }
 
-            function tradeMonth(dateStr) {
-                if (!dateStr) return '—';
-                try {
-                    var d = new Date(dateStr);
-                    return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-                } catch (e) { return '—'; }
+            function formatMonthDisplay(trade) {
+                if (trade.trade_month) {
+                    var parts = trade.trade_month.split('-');
+                    if (parts.length === 2) {
+                        var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+                        return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                    }
+                }
+                if (trade.date) {
+                    try {
+                        var d = new Date(trade.date);
+                        return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                    } catch (e) {}
+                }
+                return '—';
             }
             const html = `
                 <table>
@@ -1138,7 +1147,7 @@
                             return `
                             <tr>
                                 <td>${trade.date || 'N/A'}</td>
-                                <td>${tradeMonth(trade.date)}</td>
+                                <td>${formatMonthDisplay(trade)}</td>
                                 <td>${trade.symbol || 'N/A'}</td>
                                 <td>${trade.market_index || '—'}</td>
                                 <td style="color: ${action.toUpperCase() === 'BUY' ? 'green' : 'red'}">${action.toUpperCase() || '—'}</td>
