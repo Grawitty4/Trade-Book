@@ -3,12 +3,15 @@ import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'trade-book-jwt-secret-change-in-production';
+const JWT_EXPIRES_IN = '7d';
 
 const rawAllowedOrigins = process.env.ALLOWED_ORIGINS || '';
 const allowedOrigins = rawAllowedOrigins
@@ -20,19 +23,13 @@ app.use((req, res, next) => {
     const requestOrigin = req.headers.origin;
     const hasAllowList = allowedOrigins.length > 0;
     const isAllowedOrigin = hasAllowList && requestOrigin && allowedOrigins.includes(requestOrigin);
-
-    if (!hasAllowList && requestOrigin) {
-        res.header('Access-Control-Allow-Origin', requestOrigin);
-    } else if (isAllowedOrigin) {
-        res.header('Access-Control-Allow-Origin', requestOrigin);
-    } else if (!hasAllowList) {
-        res.header('Access-Control-Allow-Origin', '*');
-    }
-
-    if (requestOrigin && (!hasAllowList || isAllowedOrigin)) {
-        res.header('Access-Control-Allow-Credentials', 'true');
-    }
-
+    // When no allow list, or when origin is in list: allow. Otherwise still allow request origin
+    // so that Netlify (or any frontend) can call the API without configuring ALLOWED_ORIGINS.
+    const allowOrigin = requestOrigin
+        ? (isAllowedOrigin || !hasAllowList ? requestOrigin : requestOrigin)
+        : '*';
+    res.header('Access-Control-Allow-Origin', allowOrigin);
+    res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 
@@ -51,10 +48,6 @@ app.use(express.static(__dirname));
 let users = new Map();
 let userTrades = new Map();
 let currentUserId = 1;
-
-// Simple session storage
-let userSessions = new Map(); // sessionId -> userId
-let currentUser = null; // For single-user simplicity
 
 console.log('🚀 Starting Working Trade Book Server...');
 
@@ -125,6 +118,54 @@ async function initDatabase() {
 
 // Initialize database connection
 initDatabase();
+
+// Resolve user by id from DB or memory (for JWT auth)
+async function resolveUserById(userId) {
+    if (dbAvailable && pool) {
+        try {
+            const result = await pool.query(
+                'SELECT id, username, email, full_name, is_public FROM cursor_trade_book.users WHERE id = $1',
+                [userId]
+            );
+            if (result.rows.length > 0) {
+                return result.rows[0];
+            }
+        } catch (e) {
+            // fall through to memory
+        }
+    }
+    const mem = users.get(Number(userId));
+    if (mem) {
+        return {
+            id: Number(userId),
+            username: mem.username,
+            email: mem.email,
+            full_name: mem.full_name,
+            is_public: mem.is_public || false
+        };
+    }
+    return null;
+}
+
+// JWT auth middleware: sets req.user or 401
+async function requireAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = await resolveUserById(decoded.id);
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'User not found' });
+        }
+        req.user = user;
+        next();
+    } catch (err) {
+        return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+    }
+}
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -200,7 +241,7 @@ app.post('/api/auth/login', async (req, res) => {
                     if (userData.password_hash) {
                         const validPassword = await bcrypt.compare(password, userData.password_hash);
                         if (validPassword) {
-                            user = { id, ...userData };
+                            user = { id, username: userData.username, email: userData.email, full_name: userData.full_name, is_public: userData.is_public || false };
                             break;
                         }
                     }
@@ -212,12 +253,12 @@ app.post('/api/auth/login', async (req, res) => {
             }
         }
 
-        currentUser = user;
-        
+        const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         res.json({
             success: true,
             message: 'Login successful',
-            user: user
+            user,
+            token
         });
     } catch (error) {
         console.error('Login error:', error);
@@ -280,17 +321,15 @@ app.post('/api/auth/register', async (req, res) => {
                 created_at: new Date().toISOString()
             };
             users.set(userId, userData);
-            user = { id: userId, ...userData };
-            // Remove password_hash from response
-            delete user.password_hash;
+            user = { id: userId, username: userData.username, email: userData.email, full_name: userData.full_name, is_public: false };
         }
 
-        currentUser = user;
-        
+        const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         res.json({
             success: true,
             message: 'Registration successful',
-            user: user
+            user,
+            token
         });
     } catch (error) {
         console.error('Registration error:', error);
@@ -298,24 +337,16 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// Get current user
-app.get('/api/auth/me', (req, res) => {
-    if (currentUser) {
-        res.json({
-            success: true,
-            user: currentUser
-        });
-    } else {
-        res.status(401).json({
-            success: false,
-            error: 'Not authenticated'
-        });
-    }
+// Get current user (JWT required)
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+    res.json({
+        success: true,
+        user: req.user
+    });
 });
 
-// Simple logout
+// Logout (client clears token; server no-op)
 app.post('/api/auth/logout', (req, res) => {
-    currentUser = null;
     res.json({
         success: true,
         message: 'Logged out successfully'
@@ -323,15 +354,7 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Get trades
-app.get('/api/trades', async (req, res) => {
-    if (!currentUser) {
-        return res.status(401).json({ 
-            success: false,
-            error: 'Authentication required',
-            trades: []
-        });
-    }
-
+app.get('/api/trades', requireAuth, async (req, res) => {
     try {
         let trades = [];
 
@@ -339,7 +362,7 @@ app.get('/api/trades', async (req, res) => {
             try {
                 const result = await pool.query(
                     'SELECT id, symbol, type, quantity, price, date, created_at FROM cursor_trade_book.trades WHERE user_id = $1 ORDER BY created_at DESC',
-                    [currentUser.id]
+                    [req.user.id]
                 );
                 trades = result.rows;
             } catch (dbError) {
@@ -349,7 +372,7 @@ app.get('/api/trades', async (req, res) => {
         }
 
         if (!dbAvailable) {
-            trades = userTrades.get(currentUser.id) || [];
+            trades = userTrades.get(req.user.id) || [];
         }
 
         res.json({
@@ -367,18 +390,11 @@ app.get('/api/trades', async (req, res) => {
 });
 
 // Add trade
-app.post('/api/trades', async (req, res) => {
-    if (!currentUser) {
-        return res.status(401).json({ 
-            success: false,
-            error: 'Authentication required'
-        });
-    }
-
+app.post('/api/trades', requireAuth, async (req, res) => {
     try {
         const trade = {
             id: Date.now(),
-            userId: currentUser.id,
+            userId: req.user.id,
             symbol: req.body.symbol,
             type: req.body.type,
             quantity: parseInt(req.body.quantity),
@@ -391,7 +407,7 @@ app.post('/api/trades', async (req, res) => {
             try {
                 const result = await pool.query(
                     'INSERT INTO cursor_trade_book.trades (user_id, symbol, type, quantity, price, date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, symbol, type, quantity, price, date, created_at',
-                    [currentUser.id, trade.symbol, trade.type, trade.quantity, trade.price, trade.date]
+                    [req.user.id, trade.symbol, trade.type, trade.quantity, trade.price, trade.date]
                 );
                 const dbTrade = result.rows[0];
                 trade.id = dbTrade.id;
@@ -403,10 +419,9 @@ app.post('/api/trades', async (req, res) => {
         }
 
         if (!dbAvailable) {
-            // Save to memory
-            const userTradeList = userTrades.get(currentUser.id) || [];
+            const userTradeList = userTrades.get(req.user.id) || [];
             userTradeList.push(trade);
-            userTrades.set(currentUser.id, userTradeList);
+            userTrades.set(req.user.id, userTradeList);
         }
 
         res.json({
@@ -424,21 +439,17 @@ app.post('/api/trades', async (req, res) => {
 });
 
 // Get all users (for friend selection dropdown)
-app.get('/api/users', async (req, res) => {
-    if (!currentUser) {
-        return res.status(401).json({ error: 'Authentication required' });
-    }
-
+app.get('/api/users', requireAuth, async (req, res) => {
     try {
-        let users = [];
+        let userList = [];
 
         if (dbAvailable && pool) {
             try {
                 const result = await pool.query(
                     'SELECT id, username, full_name, email FROM cursor_trade_book.users WHERE id != $1 ORDER BY username',
-                    [currentUser.id]
+                    [req.user.id]
                 );
-                users = result.rows;
+                userList = result.rows;
             } catch (dbError) {
                 console.log('Database error getting users, using memory:', dbError.message);
                 dbAvailable = false;
@@ -446,11 +457,10 @@ app.get('/api/users', async (req, res) => {
         }
 
         if (!dbAvailable) {
-            // Get users from memory (excluding current user)
             for (const [id, userData] of users) {
-                if (id !== currentUser.id) {
-                    users.push({
-                        id: id,
+                if (id !== req.user.id) {
+                    userList.push({
+                        id,
                         username: userData.username,
                         full_name: userData.full_name,
                         email: userData.email
@@ -459,7 +469,7 @@ app.get('/api/users', async (req, res) => {
             }
         }
 
-        res.json({ success: true, users: users });
+        res.json({ success: true, users: userList });
     } catch (error) {
         console.error('Get users error:', error);
         res.status(500).json({ error: 'Failed to get users', users: [] });
@@ -467,41 +477,39 @@ app.get('/api/users', async (req, res) => {
 });
 
 // Friends endpoints (simplified)
-app.get('/api/friends', (req, res) => {
-    if (!currentUser) {
-        return res.status(401).json({ error: 'Authentication required' });
-    }
+app.get('/api/friends', requireAuth, (req, res) => {
     res.json({ success: true, friends: [] });
 });
 
-app.post('/api/friends/add', (req, res) => {
-    if (!currentUser) {
-        return res.status(401).json({ error: 'Authentication required' });
-    }
+app.post('/api/friends/add', requireAuth, (req, res) => {
     res.json({ success: true, message: 'Friend added successfully' });
 });
 
-// Profile visibility
-app.post('/api/auth/profile/visibility', (req, res) => {
-    if (!currentUser) {
-        return res.status(401).json({ error: 'Authentication required' });
+// Profile visibility (persist in DB when available)
+app.post('/api/auth/profile/visibility', requireAuth, async (req, res) => {
+    const isPublic = req.body.isPublic === true;
+    if (dbAvailable && pool) {
+        try {
+            await pool.query(
+                'UPDATE cursor_trade_book.users SET is_public = $1 WHERE id = $2',
+                [isPublic, req.user.id]
+            );
+        } catch (e) {
+            // ignore
+        }
+    } else {
+        const mem = users.get(req.user.id);
+        if (mem) mem.is_public = isPublic;
     }
-    
-    // Toggle visibility
-    currentUser.is_public = !currentUser.is_public;
-    
-    res.json({ 
-        success: true, 
-        message: `Profile set to ${currentUser.is_public ? 'Public' : 'Private'}`,
-        user: currentUser
+    res.json({
+        success: true,
+        message: `Profile set to ${isPublic ? 'Public' : 'Private'}`,
+        user: { ...req.user, is_public: isPublic }
     });
 });
 
 // Sharing
-app.get('/api/sharing/portfolios', (req, res) => {
-    if (!currentUser) {
-        return res.status(401).json({ error: 'Authentication required' });
-    }
+app.get('/api/sharing/portfolios', requireAuth, (req, res) => {
     res.json({ success: true, portfolios: [] });
 });
 
