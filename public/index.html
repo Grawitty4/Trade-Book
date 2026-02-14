@@ -423,6 +423,33 @@
             font-weight: 600;
         }
 
+        .portfolio-sub-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 14px;
+        }
+        .portfolio-sub-tab {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 1px solid #dee2e6;
+            background: #f8f9fa;
+            color: #495057;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .portfolio-sub-tab:hover {
+            background: #e9ecef;
+        }
+        .portfolio-sub-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .portfolio-sub-content {
+            margin-top: 0;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -623,11 +650,20 @@
 
             <!-- Portfolio Tab -->
             <div id="portfolio" class="tab-content">
-                <h2>📊 Portfolio Summary</h2>
-                <div class="form-section">
-                    <div id="portfolioSummary">
-                        <p>Portfolio analysis will appear here...</p>
-                    </div>
+                <h2>📊 Portfolio</h2>
+                <div class="portfolio-sub-tabs">
+                    <button type="button" class="portfolio-sub-tab active" data-portfolio="holdings" onclick="switchPortfolioSubTab('holdings')">Holdings</button>
+                    <button type="button" class="portfolio-sub-tab" data-portfolio="positions" onclick="switchPortfolioSubTab('positions')">Positions</button>
+                    <button type="button" class="portfolio-sub-tab" data-portfolio="executed" onclick="switchPortfolioSubTab('executed')">Executed Trades</button>
+                </div>
+                <div id="portfolioHoldings" class="portfolio-sub-content form-section">
+                    <div id="holdingsContainer"><p>Loading…</p></div>
+                </div>
+                <div id="portfolioPositions" class="portfolio-sub-content form-section" style="display:none;">
+                    <div id="positionsContainer"><p>Loading…</p></div>
+                </div>
+                <div id="portfolioExecuted" class="portfolio-sub-content form-section" style="display:none;">
+                    <div id="executedTradesContainer"><p>Loading…</p></div>
                 </div>
             </div>
             </div>
@@ -783,6 +819,105 @@
             event.target.classList.add('active');
             document.getElementById(tabName).classList.add('active');
             if (tabName === 'trades') loadTrades();
+            if (tabName === 'portfolio') loadPortfolioData();
+        }
+
+        var portfolioTradesCache = [];
+
+        function formatMonthDisplay(trade) {
+            if (trade.trade_month) {
+                var parts = trade.trade_month.split('-');
+                if (parts.length === 2) {
+                    var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+                    return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                }
+            }
+            if (trade.date) {
+                try {
+                    var d = new Date(trade.date);
+                    return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                } catch (e) {}
+            }
+            return '—';
+        }
+
+        function tradesTableHTML(trades) {
+            if (!Array.isArray(trades) || trades.length === 0) {
+                return '<p>No trades to show.</p>';
+            }
+            return `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Month</th>
+                            <th>Symbol</th>
+                            <th>Index</th>
+                            <th>Action</th>
+                            <th>Type</th>
+                            <th>Qty</th>
+                            <th>Price (₹)</th>
+                            <th>Strike (₹)</th>
+                            <th>Expiry</th>
+                            <th>Value (₹)</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${trades.map(trade => {
+                            const action = trade.trade_action || trade.type || '';
+                            return `
+                            <tr>
+                                <td>${trade.date || 'N/A'}</td>
+                                <td>${formatMonthDisplay(trade)}</td>
+                                <td>${trade.symbol || 'N/A'}</td>
+                                <td>${trade.market_index || '—'}</td>
+                                <td style="color: ${action.toUpperCase() === 'BUY' ? 'green' : 'red'}">${action.toUpperCase() || '—'}</td>
+                                <td>${trade.trade_type || '—'}</td>
+                                <td>${trade.quantity || 0}</td>
+                                <td>₹${trade.price != null ? trade.price : '—'}</td>
+                                <td>${trade.strike_price != null ? '₹' + trade.strike_price : '—'}</td>
+                                <td>${trade.expiry || '—'}</td>
+                                <td>₹${((trade.quantity || 0) * (trade.price || 0)).toFixed(2)}</td>
+                                <td>${(trade.reason || '—').toString().substring(0, 40)}${(trade.reason || '').length > 40 ? '…' : ''}</td>
+                            </tr>
+                        `}).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function loadPortfolioData() {
+            try {
+                var response = await fetch(BASE_URL + '/api/trades', { headers: getAuthHeaders() });
+                if (response.status === 401) {
+                    clearAuthAndShowLogin();
+                    return;
+                }
+                var result = await response.json();
+                portfolioTradesCache = Array.isArray(result.trades) ? result.trades : [];
+                switchPortfolioSubTab('holdings');
+            } catch (e) {
+                console.error('Portfolio load error', e);
+                portfolioTradesCache = [];
+                document.getElementById('holdingsContainer').innerHTML = '<p style="color:red;">Failed to load data.</p>';
+                document.getElementById('positionsContainer').innerHTML = '<p style="color:red;">Failed to load data.</p>';
+                document.getElementById('executedTradesContainer').innerHTML = '<p style="color:red;">Failed to load data.</p>';
+            }
+        }
+
+        function switchPortfolioSubTab(subTabId) {
+            document.querySelectorAll('.portfolio-sub-tab').forEach(function(t) {
+                t.classList.toggle('active', t.getAttribute('data-portfolio') === subTabId);
+            });
+            document.getElementById('portfolioHoldings').style.display = subTabId === 'holdings' ? 'block' : 'none';
+            document.getElementById('portfolioPositions').style.display = subTabId === 'positions' ? 'block' : 'none';
+            document.getElementById('portfolioExecuted').style.display = subTabId === 'executed' ? 'block' : 'none';
+            var holdings = portfolioTradesCache.filter(function(t) { return (t.trade_type || '').toLowerCase() === 'cash'; });
+            var positions = portfolioTradesCache.filter(function(t) { var type = (t.trade_type || '').trim(); return type && type.toLowerCase() !== 'cash'; });
+            document.getElementById('holdingsContainer').innerHTML = tradesTableHTML(holdings);
+            document.getElementById('positionsContainer').innerHTML = tradesTableHTML(positions);
+            document.getElementById('executedTradesContainer').innerHTML = tradesTableHTML(portfolioTradesCache);
         }
 
         async function login() {
@@ -1101,70 +1236,11 @@
 
         function displayTrades(trades) {
             const container = document.getElementById('tradesContainer');
-            
             if (!Array.isArray(trades) || trades.length === 0) {
                 container.innerHTML = '<p>No trades found. Add your first trade above!</p>';
                 return;
             }
-
-            function formatMonthDisplay(trade) {
-                if (trade.trade_month) {
-                    var parts = trade.trade_month.split('-');
-                    if (parts.length === 2) {
-                        var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
-                        return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-                    }
-                }
-                if (trade.date) {
-                    try {
-                        var d = new Date(trade.date);
-                        return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-                    } catch (e) {}
-                }
-                return '—';
-            }
-            const html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Month</th>
-                            <th>Symbol</th>
-                            <th>Index</th>
-                            <th>Action</th>
-                            <th>Type</th>
-                            <th>Qty</th>
-                            <th>Price (₹)</th>
-                            <th>Strike (₹)</th>
-                            <th>Expiry</th>
-                            <th>Value (₹)</th>
-                            <th>Reason</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${trades.map(trade => {
-                            const action = trade.trade_action || trade.type || '';
-                            return `
-                            <tr>
-                                <td>${trade.date || 'N/A'}</td>
-                                <td>${formatMonthDisplay(trade)}</td>
-                                <td>${trade.symbol || 'N/A'}</td>
-                                <td>${trade.market_index || '—'}</td>
-                                <td style="color: ${action.toUpperCase() === 'BUY' ? 'green' : 'red'}">${action.toUpperCase() || '—'}</td>
-                                <td>${trade.trade_type || '—'}</td>
-                                <td>${trade.quantity || 0}</td>
-                                <td>₹${trade.price != null ? trade.price : '—'}</td>
-                                <td>${trade.strike_price != null ? '₹' + trade.strike_price : '—'}</td>
-                                <td>${trade.expiry || '—'}</td>
-                                <td>₹${((trade.quantity || 0) * (trade.price || 0)).toFixed(2)}</td>
-                                <td>${(trade.reason || '—').toString().substring(0, 40)}${(trade.reason || '').length > 40 ? '…' : ''}</td>
-                            </tr>
-                        `}).join('')}
-                    </tbody>
-                </table>
-            `;
-            
-            container.innerHTML = html;
+            container.innerHTML = tradesTableHTML(trades);
         }
 
         async function loadAvailableUsers() {
