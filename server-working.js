@@ -100,6 +100,15 @@ async function initDatabase() {
         await client.query(`
             ALTER TABLE cursor_trade_book.users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);
         `);
+        await client.query(`
+            ALTER TABLE cursor_trade_book.trades ADD COLUMN IF NOT EXISTS market_index VARCHAR(10);
+        `);
+        await client.query(`
+            ALTER TABLE cursor_trade_book.trades ADD COLUMN IF NOT EXISTS trade_type VARCHAR(20);
+        `);
+        await client.query(`
+            ALTER TABLE cursor_trade_book.trades ADD COLUMN IF NOT EXISTS reason TEXT;
+        `);
         
         client.release();
         dbAvailable = true;
@@ -422,10 +431,16 @@ app.get('/api/trades', requireAuth, async (req, res) => {
         if (dbAvailable && pool) {
             try {
                 const result = await pool.query(
-                    'SELECT id, symbol, type, quantity, price, date, created_at FROM cursor_trade_book.trades WHERE user_id = $1 ORDER BY created_at DESC',
+                    'SELECT id, symbol, type, quantity, price, date, created_at, market_index, trade_type, reason FROM cursor_trade_book.trades WHERE user_id = $1 ORDER BY date DESC, created_at DESC',
                     [req.user.id]
                 );
-                trades = result.rows;
+                trades = result.rows.map(r => ({
+                    ...r,
+                    trade_action: r.type,
+                    market_index: r.market_index || null,
+                    trade_type: r.trade_type || null,
+                    reason: r.reason || null
+                }));
             } catch (dbError) {
                 console.log('Database error getting trades, using memory:', dbError.message);
                 dbAvailable = false;
@@ -433,7 +448,14 @@ app.get('/api/trades', requireAuth, async (req, res) => {
         }
 
         if (!dbAvailable) {
-            trades = userTrades.get(req.user.id) || [];
+            const raw = userTrades.get(req.user.id) || [];
+            trades = raw.map(t => ({
+                ...t,
+                trade_action: t.type,
+                market_index: t.market_index || null,
+                trade_type: t.trade_type || null,
+                reason: t.reason || null
+            }));
         }
 
         res.json({
@@ -453,26 +475,33 @@ app.get('/api/trades', requireAuth, async (req, res) => {
 // Add trade
 app.post('/api/trades', requireAuth, async (req, res) => {
     try {
+        const tradeAction = (req.body.trade_action || req.body.type || '').toLowerCase();
         const trade = {
             id: Date.now(),
             userId: req.user.id,
-            symbol: req.body.symbol,
-            type: req.body.type,
-            quantity: parseInt(req.body.quantity),
+            symbol: (req.body.symbol || '').trim(),
+            type: (tradeAction === 'sell' ? 'sell' : 'buy'),
+            quantity: parseInt(req.body.quantity, 10),
             price: parseFloat(req.body.price),
             date: req.body.date || new Date().toISOString().split('T')[0],
+            market_index: (req.body.market_index || '').trim() || null,
+            trade_type: (req.body.trade_type || '').trim() || null,
+            reason: (req.body.reason || '').trim() || null,
             created_at: new Date().toISOString()
         };
 
         if (dbAvailable && pool) {
             try {
                 const result = await pool.query(
-                    'INSERT INTO cursor_trade_book.trades (user_id, symbol, type, quantity, price, date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, symbol, type, quantity, price, date, created_at',
-                    [req.user.id, trade.symbol, trade.type, trade.quantity, trade.price, trade.date]
+                    'INSERT INTO cursor_trade_book.trades (user_id, symbol, type, quantity, price, date, market_index, trade_type, reason) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, symbol, type, quantity, price, date, created_at, market_index, trade_type, reason',
+                    [req.user.id, trade.symbol, trade.type, trade.quantity, trade.price, trade.date, trade.market_index, trade.trade_type, trade.reason]
                 );
                 const dbTrade = result.rows[0];
                 trade.id = dbTrade.id;
                 trade.created_at = dbTrade.created_at;
+                trade.market_index = dbTrade.market_index;
+                trade.trade_type = dbTrade.trade_type;
+                trade.reason = dbTrade.reason;
             } catch (dbError) {
                 console.log('Database error saving trade, using memory:', dbError.message);
                 dbAvailable = false;
@@ -485,10 +514,11 @@ app.post('/api/trades', requireAuth, async (req, res) => {
             userTrades.set(req.user.id, userTradeList);
         }
 
+        const out = { ...trade, trade_action: trade.type };
         res.json({
             success: true,
             message: 'Trade saved successfully',
-            trade: trade
+            trade: out
         });
     } catch (error) {
         console.error('Add trade error:', error);

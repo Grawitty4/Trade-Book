@@ -428,15 +428,38 @@
                     <h3>Add New Trade</h3>
                     <div class="form-row">
                         <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="tradeDate" required>
+                        </div>
+                        <div class="form-group">
                             <label>Stock Symbol</label>
                             <input type="text" id="tradeSymbol" placeholder="e.g., RELIANCE, TCS" required>
                         </div>
                         <div class="form-group">
-                            <label>Type</label>
-                            <select id="tradeType" required>
-                                <option value="">Select Type</option>
+                            <label>Index</label>
+                            <select id="tradeIndex">
+                                <option value="">Select</option>
+                                <option value="MCX">MCX</option>
+                                <option value="NSE">NSE</option>
+                                <option value="BSE">BSE</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Trade action</label>
+                            <select id="tradeAction" required>
+                                <option value="">Select</option>
                                 <option value="buy">Buy</option>
                                 <option value="sell">Sell</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Trade type</label>
+                            <select id="tradeType">
+                                <option value="">Select</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Futures">Futures</option>
+                                <option value="CE">CE</option>
+                                <option value="PE">PE</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -447,9 +470,9 @@
                             <label>Price (₹)</label>
                             <input type="number" id="tradePrice" step="0.01" placeholder="1500.00" required>
                         </div>
-                        <div class="form-group">
-                            <label>Date</label>
-                            <input type="date" id="tradeDate" required>
+                        <div class="form-group" style="flex: 1; min-width: 180px;">
+                            <label>Reason</label>
+                            <input type="text" id="tradeReason" placeholder="Reason for trade">
                         </div>
                         <button type="button" onclick="addTrade()" class="btn">Add Trade</button>
                     </div>
@@ -850,14 +873,17 @@
         }
 
         async function addTrade() {
-            const symbol = document.getElementById('tradeSymbol').value.trim().toUpperCase();
-            const type = document.getElementById('tradeType').value;
-            const quantity = parseInt(document.getElementById('tradeQuantity').value);
-            const price = parseFloat(document.getElementById('tradePrice').value);
             const date = document.getElementById('tradeDate').value;
+            const symbol = document.getElementById('tradeSymbol').value.trim().toUpperCase();
+            const market_index = document.getElementById('tradeIndex').value.trim() || null;
+            const trade_action = document.getElementById('tradeAction').value;
+            const trade_type = document.getElementById('tradeType').value.trim() || null;
+            const quantity = parseInt(document.getElementById('tradeQuantity').value, 10);
+            const price = parseFloat(document.getElementById('tradePrice').value);
+            const reason = document.getElementById('tradeReason').value.trim() || null;
             
-            if (!symbol || !type || !quantity || !price || !date) {
-                showTradeStatus('Please fill in all fields', 'error');
+            if (!symbol || !trade_action || !quantity || !price || !date) {
+                showTradeStatus('Please fill in Date, Symbol, Trade action, Quantity and Price', 'error');
                 return;
             }
 
@@ -865,21 +891,21 @@
                 const response = await fetch(`${BASE_URL}/api/trades`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
-                    body: JSON.stringify({ symbol, type, quantity, price, date })
+                    body: JSON.stringify({ date, symbol, market_index, trade_action, trade_type, quantity, price, reason })
                 });
 
                 const result = await response.json();
                 
                 if (response.ok) {
                     showTradeStatus('Trade added successfully!', 'success');
-                    
-                    // Clear form
+                    document.getElementById('tradeDate').value = date;
                     document.getElementById('tradeSymbol').value = '';
+                    document.getElementById('tradeIndex').value = '';
+                    document.getElementById('tradeAction').value = '';
                     document.getElementById('tradeType').value = '';
                     document.getElementById('tradeQuantity').value = '';
                     document.getElementById('tradePrice').value = '';
-                    
-                    // Reload trades
+                    document.getElementById('tradeReason').value = '';
                     loadTrades();
                 } else {
                     showTradeStatus(result.error || 'Failed to add trade', 'error');
@@ -931,25 +957,31 @@
                         <tr>
                             <th>Date</th>
                             <th>Symbol</th>
-                            <th>Type</th>
+                            <th>Index</th>
+                            <th>Trade action</th>
+                            <th>Trade type</th>
                             <th>Quantity</th>
                             <th>Price (₹)</th>
                             <th>Value (₹)</th>
+                            <th>Reason</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${trades.map(trade => `
+                        ${trades.map(trade => {
+                            const action = trade.trade_action || trade.type || '';
+                            return `
                             <tr>
                                 <td>${trade.date || 'N/A'}</td>
                                 <td>${trade.symbol || 'N/A'}</td>
-                                <td style="color: ${(trade.type || '').toUpperCase() === 'BUY' ? 'green' : 'red'}">
-                                    ${(trade.type || 'N/A').toUpperCase()}
-                                </td>
+                                <td>${trade.market_index || '—'}</td>
+                                <td style="color: ${action.toUpperCase() === 'BUY' ? 'green' : 'red'}">${action.toUpperCase() || '—'}</td>
+                                <td>${trade.trade_type || '—'}</td>
                                 <td>${trade.quantity || 0}</td>
                                 <td>₹${trade.price || 0}</td>
                                 <td>₹${((trade.quantity || 0) * (trade.price || 0)).toFixed(2)}</td>
+                                <td>${(trade.reason || '—').toString().substring(0, 40)}${(trade.reason || '').length > 40 ? '…' : ''}</td>
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
             `;
