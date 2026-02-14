@@ -450,6 +450,43 @@
             margin-top: 0;
         }
 
+        .executed-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 24px;
+            margin-bottom: 14px;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .executed-filter-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .executed-filter-label {
+            font-weight: 600;
+            color: #495057;
+            white-space: nowrap;
+        }
+        .executed-filter-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            align-items: center;
+        }
+        .executed-filter-checkboxes label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: normal;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .executed-filter-checkboxes input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -663,6 +700,16 @@
                     <div id="positionsContainer"><p>Loading…</p></div>
                 </div>
                 <div id="portfolioExecuted" class="portfolio-sub-content form-section" style="display:none;">
+                    <div class="executed-filters">
+                        <div class="executed-filter-group">
+                            <span class="executed-filter-label">Month:</span>
+                            <div id="executedMonthFilters" class="executed-filter-checkboxes"></div>
+                        </div>
+                        <div class="executed-filter-group">
+                            <span class="executed-filter-label">Type:</span>
+                            <div id="executedTypeFilters" class="executed-filter-checkboxes"></div>
+                        </div>
+                    </div>
                     <div id="executedTradesContainer"><p>Loading…</p></div>
                 </div>
             </div>
@@ -906,6 +953,65 @@
             }
         }
 
+        function getTradeMonthKey(trade) {
+            if (trade.trade_month) return trade.trade_month;
+            if (trade.date) {
+                try {
+                    var d = new Date(trade.date);
+                    var y = d.getFullYear();
+                    var m = d.getMonth() + 1;
+                    return y + '-' + (m < 10 ? '0' : '') + m;
+                } catch (e) {}
+            }
+            return '';
+        }
+
+        function renderExecutedTradesFilters() {
+            var trades = portfolioTradesCache || [];
+            var monthSet = {};
+            var typeSet = {};
+            trades.forEach(function(t) {
+                var m = getTradeMonthKey(t);
+                if (m) monthSet[m] = true;
+                var ty = (t.trade_type || '').trim();
+                if (ty) typeSet[ty] = true;
+            });
+            var months = Object.keys(monthSet).sort().reverse();
+            var types = Object.keys(typeSet).sort();
+
+            var monthEl = document.getElementById('executedMonthFilters');
+            var typeEl = document.getElementById('executedTypeFilters');
+            monthEl.innerHTML = months.map(function(m) {
+                var label = formatMonthDisplay({ trade_month: m });
+                return '<label><input type="checkbox" class="executed-filter-month" value="' + m + '" onchange="applyExecutedTradesFilter()"> ' + label + '</label>';
+            }).join('');
+            typeEl.innerHTML = types.map(function(ty) {
+                return '<label><input type="checkbox" class="executed-filter-type" value="' + (ty.replace(/"/g, '&quot;')) + '" onchange="applyExecutedTradesFilter()"> ' + (ty.replace(/</g, '&lt;')) + '</label>';
+            }).join('');
+        }
+
+        function getExecutedFiltered() {
+            var trades = portfolioTradesCache || [];
+            var selectedMonths = [];
+            document.querySelectorAll('.executed-filter-month:checked').forEach(function(cb) { selectedMonths.push(cb.value); });
+            var selectedTypes = [];
+            document.querySelectorAll('.executed-filter-type:checked').forEach(function(cb) { selectedTypes.push(cb.value); });
+            var filterByMonth = selectedMonths.length > 0;
+            var filterByType = selectedTypes.length > 0;
+            if (!filterByMonth && !filterByType) return trades;
+            return trades.filter(function(t) {
+                var okMonth = !filterByMonth || selectedMonths.indexOf(getTradeMonthKey(t)) !== -1;
+                var tradeType = (t.trade_type || '').trim();
+                var okType = !filterByType || selectedTypes.indexOf(tradeType) !== -1;
+                return okMonth && okType;
+            });
+        }
+
+        function applyExecutedTradesFilter() {
+            var filtered = getExecutedFiltered();
+            document.getElementById('executedTradesContainer').innerHTML = tradesTableHTML(filtered);
+        }
+
         function switchPortfolioSubTab(subTabId) {
             document.querySelectorAll('.portfolio-sub-tab').forEach(function(t) {
                 t.classList.toggle('active', t.getAttribute('data-portfolio') === subTabId);
@@ -917,7 +1023,12 @@
             var positions = portfolioTradesCache.filter(function(t) { var type = (t.trade_type || '').trim(); return type && type.toLowerCase() !== 'cash'; });
             document.getElementById('holdingsContainer').innerHTML = tradesTableHTML(holdings);
             document.getElementById('positionsContainer').innerHTML = tradesTableHTML(positions);
-            document.getElementById('executedTradesContainer').innerHTML = tradesTableHTML(portfolioTradesCache);
+            if (subTabId === 'executed') {
+                renderExecutedTradesFilters();
+                applyExecutedTradesFilter();
+            } else {
+                document.getElementById('executedTradesContainer').innerHTML = tradesTableHTML(portfolioTradesCache);
+            }
         }
 
         async function login() {
