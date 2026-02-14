@@ -97,6 +97,9 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+        await client.query(`
+            ALTER TABLE cursor_trade_book.users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);
+        `);
         
         client.release();
         dbAvailable = true;
@@ -115,11 +118,12 @@ async function resolveUserById(userId) {
     if (dbAvailable && pool) {
         try {
             const result = await pool.query(
-                'SELECT id, username, email, full_name, is_public FROM cursor_trade_book.users WHERE id = $1',
+                'SELECT id, username, email, full_name, is_public, phone_number FROM cursor_trade_book.users WHERE id = $1',
                 [userId]
             );
             if (result.rows.length > 0) {
-                return result.rows[0];
+                const row = result.rows[0];
+                return { id: row.id, username: row.username, email: row.email, full_name: row.full_name, is_public: row.is_public, phone_number: row.phone_number || null };
             }
         } catch (e) {
             // fall through to memory
@@ -132,7 +136,8 @@ async function resolveUserById(userId) {
             username: mem.username,
             email: mem.email,
             full_name: mem.full_name,
-            is_public: mem.is_public || false
+            is_public: mem.is_public || false,
+            phone_number: mem.phone_number || null
         };
     }
     return null;
@@ -200,7 +205,7 @@ app.post('/api/auth/login', async (req, res) => {
             // Try database first
             try {
                 const result = await pool.query(
-                    'SELECT id, username, email, full_name, is_public, password_hash FROM cursor_trade_book.users WHERE username = $1 OR email = $1',
+                    'SELECT id, username, email, full_name, is_public, phone_number, password_hash FROM cursor_trade_book.users WHERE username = $1 OR email = $1',
                     [identifier]
                 );
                 
@@ -218,7 +223,8 @@ app.post('/api/auth/login', async (req, res) => {
                         username: dbUser.username,
                         email: dbUser.email,
                         full_name: dbUser.full_name,
-                        is_public: dbUser.is_public
+                        is_public: dbUser.is_public,
+                        phone_number: dbUser.phone_number || null
                     };
                 } else {
                     return res.status(401).json({ error: 'Invalid credentials' });
@@ -237,7 +243,7 @@ app.post('/api/auth/login', async (req, res) => {
                     if (userData.password_hash) {
                         const validPassword = await bcrypt.compare(password, userData.password_hash);
                         if (validPassword) {
-                            user = { id, username: userData.username, email: userData.email, full_name: userData.full_name, is_public: userData.is_public || false };
+                            user = { id, username: userData.username, email: userData.email, full_name: userData.full_name, is_public: userData.is_public || false, phone_number: userData.phone_number || null };
                             break;
                         }
                     }
@@ -292,10 +298,11 @@ app.post('/api/auth/register', async (req, res) => {
 
                 const hashedPassword = await bcrypt.hash(password, 10);
                 const result = await pool.query(
-                    'INSERT INTO cursor_trade_book.users (username, email, password_hash, full_name, is_public) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, email, full_name, is_public',
+                    'INSERT INTO cursor_trade_book.users (username, email, password_hash, full_name, is_public, phone_number) VALUES ($1, $2, $3, $4, $5, NULL) RETURNING id, username, email, full_name, is_public, phone_number',
                     [username, email || `${username}@tradebook.com`, hashedPassword, fullName || username, false]
                 );
-                user = result.rows[0];
+                const row = result.rows[0];
+                user = { id: row.id, username: row.username, email: row.email, full_name: row.full_name, is_public: row.is_public, phone_number: row.phone_number || null };
             } catch (dbError) {
                 console.log('Database error during register, falling back to memory:', dbError.message);
                 dbAvailable = false;
@@ -319,10 +326,11 @@ app.post('/api/auth/register', async (req, res) => {
                 password_hash: hashedPassword,
                 full_name: fullName || username,
                 is_public: false,
+                phone_number: null,
                 created_at: new Date().toISOString()
             };
             users.set(userId, userData);
-            user = { id: userId, username: userData.username, email: userData.email, full_name: userData.full_name, is_public: false };
+            user = { id: userId, username: userData.username, email: userData.email, full_name: userData.full_name, is_public: false, phone_number: null };
         }
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
@@ -344,6 +352,58 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
         success: true,
         user: req.user
     });
+});
+
+// Get full profile (same as me; for profile page)
+app.get('/api/auth/profile', requireAuth, async (req, res) => {
+    res.json({
+        success: true,
+        user: req.user
+    });
+});
+
+// Update profile (email, full_name, phone_number)
+app.patch('/api/auth/profile', requireAuth, async (req, res) => {
+    try {
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+        const { email, full_name, phone_number } = body;
+        const updates = [];
+        const values = [];
+        let idx = 1;
+        if (typeof email === 'string' && email.trim()) {
+            updates.push(`email = $${idx++}`);
+            values.push(email.trim());
+        }
+        if (typeof full_name === 'string') {
+            updates.push(`full_name = $${idx++}`);
+            values.push(full_name.trim() || null);
+        }
+        if (typeof phone_number === 'string') {
+            updates.push(`phone_number = $${idx++}`);
+            values.push(phone_number.trim() || null);
+        }
+        if (updates.length === 0) {
+            return res.json({ success: true, user: req.user });
+        }
+        values.push(req.user.id);
+        if (dbAvailable && pool) {
+            await pool.query(
+                `UPDATE cursor_trade_book.users SET ${updates.join(', ')} WHERE id = $${idx}`,
+                values
+            );
+        }
+        const mem = users.get(req.user.id);
+        if (mem) {
+            if (email !== undefined && email) mem.email = email.trim();
+            if (full_name !== undefined) mem.full_name = full_name ? full_name.trim() : null;
+            if (phone_number !== undefined) mem.phone_number = phone_number ? phone_number.trim() : null;
+        }
+        const updated = await resolveUserById(req.user.id);
+        res.json({ success: true, user: updated });
+    } catch (err) {
+        console.error('Profile update error:', err);
+        res.status(400).json({ error: 'Failed to update profile' });
+    }
 });
 
 // Logout (client clears token; server no-op)

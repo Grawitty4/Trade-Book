@@ -163,6 +163,85 @@
             align-items: center;
         }
 
+        .profile-link {
+            background: none;
+            border: none;
+            color: #667eea;
+            font-size: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 0;
+        }
+        .profile-link:hover {
+            color: #5a6fd8;
+        }
+
+        .profile-panel {
+            display: none;
+            margin-top: 20px;
+        }
+        .profile-panel.visible {
+            display: block;
+        }
+        .profile-panel h2 {
+            margin-bottom: 24px;
+            color: #333;
+        }
+        .profile-section {
+            margin-bottom: 28px;
+        }
+        .profile-section h3 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+            color: #555;
+        }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            background: #ccc;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle-switch.on {
+            background: #667eea;
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            left: 2px;
+            top: 2px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .toggle-switch.on::after {
+            transform: translateX(22px);
+        }
+        .profile-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
         .app-tabs {
             display: flex;
             gap: 10px;
@@ -328,18 +407,19 @@
         <div id="mainApp" class="main-app">
             <div class="user-info">
                 <div>
-                    <h3 id="welcomeUser">Welcome!</h3>
-                    <p id="userEmail">user@example.com</p>
+                    <h3>Welcome, <button type="button" id="profileUsername" class="profile-link" onclick="openProfile()" aria-label="Open profile">—</button>!</h3>
+                    <p id="userEmail" style="color:#666;font-size:0.9rem;">—</p>
                 </div>
                 <button onclick="logout()" class="btn" style="width: auto; padding: 10px 20px;">Logout</button>
             </div>
 
             <div class="app-tabs">
                 <button class="app-tab active" onclick="switchAppTab('trades')">💼 Trade Book</button>
-                <button class="app-tab" onclick="switchAppTab('friends')">👥 Friends</button>
                 <button class="app-tab" onclick="switchAppTab('portfolio')">📊 Portfolio</button>
             </div>
 
+            <!-- Main tab content wrapper (trades + portfolio) -->
+            <div id="mainTabContent">
             <!-- Trades Tab -->
             <div id="trades" class="tab-content active">
                 <h2>💼 Trade Book</h2>
@@ -384,40 +464,6 @@
                 </div>
             </div>
 
-            <!-- Friends Tab -->
-            <div id="friends" class="tab-content">
-                <h2>👥 Friends & Social</h2>
-                
-                <div class="form-section">
-                    <h3>Add Friend</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Select User to Add as Friend</label>
-                            <select id="friendUserSelect" required>
-                                <option value="">Loading users...</option>
-                            </select>
-                        </div>
-                        <button type="button" onclick="addFriend()" class="btn">Add Friend</button>
-                    </div>
-                    <div id="friendStatus"></div>
-                </div>
-
-                <div class="form-section">
-                    <h3>Portfolio Visibility</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Portfolio Visibility</label>
-                            <select id="profileVisibility">
-                                <option value="private">Private</option>
-                                <option value="public">Public</option>
-                            </select>
-                        </div>
-                        <button type="button" onclick="updateVisibility()" class="btn">Update</button>
-                    </div>
-                    <div id="visibilityStatus"></div>
-                </div>
-            </div>
-
             <!-- Portfolio Tab -->
             <div id="portfolio" class="tab-content">
                 <h2>📊 Portfolio Summary</h2>
@@ -425,6 +471,51 @@
                     <div id="portfolioSummary">
                         <p>Portfolio analysis will appear here...</p>
                     </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- Profile Panel (shown when username is clicked) -->
+            <div id="profilePanel" class="profile-panel">
+                <button type="button" class="btn btn-secondary" style="width:auto;margin-bottom:20px;" onclick="closeProfile()">← Back</button>
+                <h2>👤 Profile</h2>
+
+                <div class="profile-section">
+                    <h3>Profile visibility</h3>
+                    <div class="toggle-row">
+                        <div id="profileVisibilityToggle" class="toggle-switch" onclick="toggleVisibility()" role="button" aria-pressed="false" title="Toggle public/private"></div>
+                        <span id="profileVisibilityLabel">Private</span>
+                    </div>
+                    <div id="visibilityStatus" style="margin-top:8px;"></div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>Add friend</h3>
+                    <div class="profile-actions">
+                        <select id="friendUserSelect" style="min-width:200px;padding:10px;">
+                            <option value="">Loading users...</option>
+                        </select>
+                        <button type="button" onclick="addFriend()" class="btn" style="width:auto;">Add Friend</button>
+                    </div>
+                    <div id="friendStatus" style="margin-top:8px;"></div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>Edit your details</h3>
+                    <div class="form-group">
+                        <label>Full name</label>
+                        <input type="text" id="profileFullName" placeholder="Your name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="profileEmail" placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone number</label>
+                        <input type="tel" id="profilePhone" placeholder="+91 98765 43210">
+                    </div>
+                    <button type="button" onclick="saveProfile()" class="btn" style="width:auto;">Save changes</button>
+                    <div id="profileStatus" style="margin-top:8px;"></div>
                 </div>
             </div>
         </div>
@@ -525,20 +616,11 @@
         }
 
         function switchAppTab(tabName) {
-            // Remove active class from all app tabs
             document.querySelectorAll('.app-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Add active class to clicked tab
             event.target.classList.add('active');
             document.getElementById(tabName).classList.add('active');
-            
-            // Load specific tab data
-            if (tabName === 'trades') {
-                loadTrades();
-            } else if (tabName === 'friends') {
-                loadAvailableUsers();
-            }
+            if (tabName === 'trades') loadTrades();
         }
 
         async function login() {
@@ -573,7 +655,6 @@
                     setTimeout(() => {
                         showMainApp();
                         loadTrades();
-                        loadAvailableUsers();
                     }, 1000);
                 } else {
                     showLoginStatus(result.error || 'Login failed', 'error');
@@ -622,7 +703,6 @@
                     setTimeout(() => {
                         showMainApp();
                         loadTrades();
-                        loadAvailableUsers();
                     }, 1000);
                 } else {
                     showRegisterStatus(result.error || 'Registration failed', 'error');
@@ -647,7 +727,6 @@
                         currentUser = result.user;
                         showMainApp();
                         loadTrades();
-                        loadAvailableUsers();
                     } else {
                         localStorage.removeItem(AUTH_TOKEN_KEY);
                     }
@@ -663,11 +742,94 @@
         function showMainApp() {
             document.getElementById('authSection').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
-            
+            document.getElementById('mainTabContent').style.display = 'block';
+            document.getElementById('profilePanel').classList.remove('visible');
             if (currentUser) {
-                document.getElementById('welcomeUser').textContent = `Welcome, ${currentUser.username}!`;
-                document.getElementById('userEmail').textContent = currentUser.email;
+                document.getElementById('profileUsername').textContent = currentUser.username;
+                document.getElementById('userEmail').textContent = currentUser.email || '—';
             }
+        }
+
+        function openProfile() {
+            document.getElementById('mainTabContent').style.display = 'none';
+            document.getElementById('profilePanel').classList.add('visible');
+            if (currentUser) {
+                document.getElementById('profileFullName').value = currentUser.full_name || '';
+                document.getElementById('profileEmail').value = currentUser.email || '';
+                document.getElementById('profilePhone').value = currentUser.phone_number || '';
+                var tgl = document.getElementById('profileVisibilityToggle');
+                var lbl = document.getElementById('profileVisibilityLabel');
+                if (currentUser.is_public) {
+                    tgl.classList.add('on');
+                    tgl.setAttribute('aria-pressed', 'true');
+                    lbl.textContent = 'Public';
+                } else {
+                    tgl.classList.remove('on');
+                    tgl.setAttribute('aria-pressed', 'false');
+                    lbl.textContent = 'Private';
+                }
+            }
+            loadAvailableUsers();
+        }
+
+        function closeProfile() {
+            document.getElementById('profilePanel').classList.remove('visible');
+            document.getElementById('mainTabContent').style.display = 'block';
+        }
+
+        function toggleVisibility() {
+            var tgl = document.getElementById('profileVisibilityToggle');
+            var lbl = document.getElementById('profileVisibilityLabel');
+            var isPublic = tgl.classList.toggle('on');
+            tgl.setAttribute('aria-pressed', isPublic ? 'true' : 'false');
+            lbl.textContent = isPublic ? 'Public' : 'Private';
+            updateVisibilityFromToggle(isPublic);
+        }
+
+        async function updateVisibilityFromToggle(isPublic) {
+            try {
+                const response = await fetch(`${BASE_URL}/api/auth/profile/visibility`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ isPublic: isPublic })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    if (currentUser) currentUser.is_public = isPublic;
+                    showVisibilityStatus('Visibility updated.', 'success');
+                } else {
+                    showVisibilityStatus(result.error || 'Failed to update', 'error');
+                }
+            } catch (e) {
+                showVisibilityStatus('Network error.', 'error');
+            }
+        }
+
+        async function saveProfile() {
+            var fullName = document.getElementById('profileFullName').value.trim();
+            var email = document.getElementById('profileEmail').value.trim();
+            var phone = document.getElementById('profilePhone').value.trim();
+            try {
+                const response = await fetch(`${BASE_URL}/api/auth/profile`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ full_name: fullName, email: email, phone_number: phone })
+                });
+                const result = await response.json();
+                if (response.ok && result.user) {
+                    currentUser = result.user;
+                    document.getElementById('userEmail').textContent = currentUser.email || '—';
+                    showProfileStatus('Profile saved.', 'success');
+                } else {
+                    showProfileStatus(result.error || 'Failed to save', 'error');
+                }
+            } catch (e) {
+                showProfileStatus('Network error.', 'error');
+            }
+        }
+
+        function showProfileStatus(message, type) {
+            showStatus('profileStatus', message, type);
         }
 
         function showAuthSection() {
@@ -858,27 +1020,6 @@
             } catch (error) {
                 console.error('Add friend error:', error);
                 showFriendStatus('Network error. Please try again.', 'error');
-            }
-        }
-
-        async function updateVisibility() {
-            const visibility = document.getElementById('profileVisibility').value;
-
-            try {
-                const response = await fetch(`${BASE_URL}/api/auth/profile/visibility`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ isPublic: visibility === 'public' })
-                });
-
-                if (response.ok) {
-                    showVisibilityStatus('Visibility updated successfully!', 'success');
-                } else {
-                    showVisibilityStatus('Failed to update visibility', 'error');
-                }
-            } catch (error) {
-                console.error('Update visibility error:', error);
-                showVisibilityStatus('Network error. Please try again.', 'error');
             }
         }
 
