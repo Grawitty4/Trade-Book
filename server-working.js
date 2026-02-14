@@ -121,6 +121,24 @@ async function initDatabase() {
         await client.query(`
             UPDATE cursor_trade_book.trades SET trade_month = TO_CHAR(date, 'YYYY-MM') WHERE trade_month IS NULL OR trade_month = '';
         `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS cursor_trade_book.holdings (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES cursor_trade_book.users(id) ON DELETE CASCADE,
+                symbol VARCHAR(50) NOT NULL,
+                avg_buy_price DECIMAL(12,2),
+                avg_buy_qty DECIMAL(14,2) DEFAULT 0,
+                avg_sell_price DECIMAL(12,2),
+                avg_sell_qty DECIMAL(14,2) DEFAULT 0,
+                additional_detail JSONB DEFAULT '[]',
+                current_price DECIMAL(12,2),
+                invested_value DECIMAL(14,2),
+                current_value DECIMAL(14,2),
+                net_change_pct DECIMAL(8,2),
+                UNIQUE(user_id, symbol)
+            );
+        `);
         
         client.release();
         dbAvailable = true;
@@ -133,6 +151,94 @@ async function initDatabase() {
 
 // Initialize database connection
 initDatabase();
+
+// Refresh holdings from cash trades for a user (DB only)
+async function refreshHoldingsForUser(userId) {
+    if (!dbAvailable || !pool) return;
+    try {
+        const cashTrades = await pool.query(
+            `SELECT id, symbol, type, quantity, price, date
+             FROM cursor_trade_book.trades
+             WHERE user_id = $1 AND LOWER(COALESCE(trade_type, '')) = 'cash'
+             ORDER BY date ASC, id ASC`,
+            [userId]
+        );
+        const bySymbol = new Map();
+        for (const row of cashTrades.rows) {
+            const sym = (row.symbol || '').trim() || '?';
+            if (!bySymbol.has(sym)) {
+                bySymbol.set(sym, {
+                    buyQty: 0,
+                    buyValue: 0,
+                    sellQty: 0,
+                    sellValue: 0,
+                    details: []
+                });
+            }
+            const rec = bySymbol.get(sym);
+            const qty = Number(row.quantity) || 0;
+            const price = Number(row.price) || 0;
+            const dateStr = row.date ? String(row.date).slice(0, 10) : '';
+            rec.details.push({
+                transactiontype: (row.type || '').toLowerCase() === 'sell' ? 'sell' : 'buy',
+                date: dateStr,
+                qty,
+                price
+            });
+            if ((row.type || '').toLowerCase() === 'sell') {
+                rec.sellQty += qty;
+                rec.sellValue += qty * price;
+            } else {
+                rec.buyQty += qty;
+                rec.buyValue += qty * price;
+            }
+        }
+        for (const [symbol, rec] of bySymbol.entries()) {
+            const avgBuyPrice = rec.buyQty > 0 ? rec.buyValue / rec.buyQty : null;
+            const avgSellPrice = rec.sellQty > 0 ? rec.sellValue / rec.sellQty : null;
+            const currentQty = rec.buyQty - rec.sellQty;
+            const investedValue = currentQty > 0 && avgBuyPrice != null ? currentQty * avgBuyPrice : null;
+            const existing = await pool.query(
+                'SELECT current_price FROM cursor_trade_book.holdings WHERE user_id = $1 AND symbol = $2',
+                [userId, symbol]
+            );
+            const currentPrice = existing.rows[0]?.current_price ?? null;
+            const effectivePrice = currentPrice != null ? currentPrice : avgBuyPrice;
+            const currentValue = currentQty > 0 && effectivePrice != null ? currentQty * effectivePrice : null;
+            const netChangePct = investedValue != null && investedValue > 0 && currentValue != null && currentPrice != null
+                ? ((currentValue - investedValue) / investedValue) * 100
+                : null;
+            await pool.query(
+                `INSERT INTO cursor_trade_book.holdings
+                 (user_id, symbol, avg_buy_price, avg_buy_qty, avg_sell_price, avg_sell_qty, additional_detail, current_price, invested_value, current_value, net_change_pct)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 ON CONFLICT (user_id, symbol) DO UPDATE SET
+                   avg_buy_price = EXCLUDED.avg_buy_price,
+                   avg_buy_qty = EXCLUDED.avg_buy_qty,
+                   avg_sell_price = EXCLUDED.avg_sell_price,
+                   avg_sell_qty = EXCLUDED.avg_sell_qty,
+                   additional_detail = EXCLUDED.additional_detail,
+                   current_price = COALESCE(EXCLUDED.current_price, cursor_trade_book.holdings.current_price),
+                   invested_value = EXCLUDED.invested_value,
+                   current_value = EXCLUDED.current_value,
+                   net_change_pct = EXCLUDED.net_change_pct`,
+                [userId, symbol, avgBuyPrice, rec.buyQty, avgSellPrice, rec.sellQty, JSON.stringify(rec.details), currentPrice, investedValue, currentValue, netChangePct]
+            );
+        }
+        // Remove holdings for symbols that have no cash trades left (all sold)
+        const symbols = [...bySymbol.keys()];
+        if (symbols.length > 0) {
+            await pool.query(
+                'DELETE FROM cursor_trade_book.holdings WHERE user_id = $1 AND symbol != ALL($2)',
+                [userId, symbols]
+            );
+        } else {
+            await pool.query('DELETE FROM cursor_trade_book.holdings WHERE user_id = $1', [userId]);
+        }
+    } catch (err) {
+        console.error('refreshHoldingsForUser error:', err);
+    }
+}
 
 // Resolve user by id from DB or memory (for JWT auth)
 async function resolveUserById(userId) {
@@ -490,6 +596,40 @@ app.get('/api/trades', requireAuth, async (req, res) => {
     }
 });
 
+// Get holdings (cash summary); refresh from cash trades then return
+app.get('/api/holdings', requireAuth, async (req, res) => {
+    try {
+        let holdings = [];
+        if (dbAvailable && pool) {
+            await refreshHoldingsForUser(req.user.id);
+            const result = await pool.query(
+                `SELECT id, user_id, symbol, avg_buy_price, avg_buy_qty, avg_sell_price, avg_sell_qty,
+                        additional_detail, current_price, invested_value, current_value, net_change_pct
+                 FROM cursor_trade_book.holdings WHERE user_id = $1 ORDER BY symbol`,
+                [req.user.id]
+            );
+            holdings = result.rows.map(r => ({
+                id: r.id,
+                user_id: r.user_id,
+                symbol: r.symbol,
+                avg_buy_price: r.avg_buy_price != null ? Number(r.avg_buy_price) : null,
+                avg_buy_qty: r.avg_buy_qty != null ? Number(r.avg_buy_qty) : null,
+                avg_sell_price: r.avg_sell_price != null ? Number(r.avg_sell_price) : null,
+                avg_sell_qty: r.avg_sell_qty != null ? Number(r.avg_sell_qty) : null,
+                additional_detail: r.additional_detail || [],
+                current_price: r.current_price != null ? Number(r.current_price) : null,
+                invested_value: r.invested_value != null ? Number(r.invested_value) : null,
+                current_value: r.current_value != null ? Number(r.current_value) : null,
+                net_change_pct: r.net_change_pct != null ? Number(r.net_change_pct) : null
+            }));
+        }
+        res.json({ success: true, holdings });
+    } catch (error) {
+        console.error('Get holdings error:', error);
+        res.status(500).json({ success: false, error: 'Failed to get holdings', holdings: [] });
+    }
+});
+
 // Add trade
 app.post('/api/trades', requireAuth, async (req, res) => {
     try {
@@ -530,6 +670,9 @@ app.post('/api/trades', requireAuth, async (req, res) => {
                 trade.expiry = dbTrade.expiry;
                 trade.strike_price = dbTrade.strike_price;
                 trade.trade_month = dbTrade.trade_month;
+                if ((trade.trade_type || '').toLowerCase() === 'cash') {
+                    refreshHoldingsForUser(req.user.id).catch(e => console.error('Refresh holdings after trade:', e));
+                }
             } catch (dbError) {
                 console.log('Database error saving trade, using memory:', dbError.message);
                 dbAvailable = false;
